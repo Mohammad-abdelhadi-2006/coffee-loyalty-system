@@ -16,6 +16,7 @@ erDiagram
         string Username UK
         string PasswordHash
         string Role
+        bool IsActive
         datetime CreatedAt
     }
     Product {
@@ -82,6 +83,12 @@ erDiagram
 - **PointsTransaction.Type**: `Earn` / `Redeem` / `Refund` / `RedeemReversal`. `Refund` is always negative (clawing back earned points on return/cancellation); `RedeemReversal` is always positive (restoring spent points on cancellation). Kept as separate types so reports can distinguish them.
 - **PointsTransaction.Amount**: the sign reflects the effect on the balance (positive = increase, negative = decrease) — Type describes the reason, not the sign.
 - **Rates**: `PointsPerDinar = 5`, `RedeemRate = 100`, `MinRedeemPoints = 250`, and `ReturnWindowDays = 1` live in `LoyaltyConstants` — one place, not buried in formulas.
+- **Employee.IsActive**: defaults to true. Deactivating an employee
+  (resignation/termination) is done via `IsActive = false` through
+  `PATCH /api/employees/{id}/status` (admin only) — never a physical
+  delete; the employee is referenced by old Orders via FK (same soft-delete
+  logic as products, decision 14). Login rule: `IsActive = false` → rejected
+  with 401.
 
 ## Database CHECK Constraints (last line of defense)
 
