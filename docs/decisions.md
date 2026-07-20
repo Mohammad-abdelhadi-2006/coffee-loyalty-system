@@ -82,3 +82,36 @@
 - **Decision:** Returns (partial or full cancellation) accepted only within one day of order creation, Jordan time. Afterwards the endpoint rejects with 400. Duration lives in LoyaltyConstants (ReturnWindowDays = 1), changeable at the shop owner's request.
 - **Rejected alternative:** Open-ended returns with no time limit.
 - **Why:** Café products are consumed immediately — a late return is physically meaningless and opens points/cash manipulation. The rule also shields the cashier: rejection comes from the system, not a personal call. Comparison in Jordan time, not UTC — otherwise evening orders get wrongly rejected.
+
+## 17. Walk-in Orders: Out of Scope
+- **Decision:** The system records orders for registered customers only
+  (loyalty only). Regular walk-in orders are handled outside the system.
+  Order.CustomerId stays NOT NULL.
+- **Rejected alternative:** Nullable CustomerId to support orders without
+  a customer.
+- **Why:** This is a points system, not a full POS. Supporting walk-in
+  customers changes validation, reports, and the cashier screen for zero
+  loyalty benefit. (Shop owner's decision.)
+
+## 18. Employee Deactivation: Soft Delete via IsActive
+- **Decision:** IsActive column on Employee (default true). Deactivation
+  via PATCH /api/employees/{id}/status (admin only). Login rejects a
+  deactivated employee with 401. No physical delete — FK on Orders.
+- **Rejected alternative:** Physical DELETE of the employee.
+- **Why:** Physical delete breaks the FK on old orders or erases their
+  history (violates decision 6). A former employee with a working login
+  is a security hole.
+
+  ## 19. Partial Returns: Cash-Paid Orders Only
+- **Decision:** Partial returns are allowed only on orders where
+  PointsRedeemed = 0. Orders paid (fully or partially) with points can
+  only be fully cancelled (decision 6 covers full reversal). The API
+  rejects with ORDER_PAID_WITH_POINTS.
+- **Rejected alternative:** Proportional refund system — splitting each
+  returned item's value between cash and points by the order's original
+  payment ratio.
+- **Why:** The proportional system needs rounding rules, a new
+  transaction type, and multi-return drift handling (~1 week) for a
+  scenario that is rare in a coffee shop. Full cancellation already
+  covers the customer fairly. Deliberate, documented scope cut.
+  
