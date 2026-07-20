@@ -1,0 +1,48 @@
+body{
+    background: #e9e7e7;
+}
+
+div{
+    display: flex;
+    align-items: center;
+}
+
+nav{
+    background: #4A3525;
+    width: 99%;
+    text-align: center;
+}
+
+nav ul{
+    display: flex;
+    padding: 10px;
+    margin:10px;
+    list-style-type: none;
+    justify-content: space-between;
+
+}
+
+    a img{
+    margin: 0px;
+    padding: 0px;
+    
+}
+
+nav a{
+    text-decoration: none;
+    color: white;
+    font-size:30px;
+    padding:10px;
+}
+
+nav li{
+    display:inline;
+    padding:10px;
+    text-align:   center;
+}
+
+nav #DownloadApp{
+    color:black;
+    background: #f1ccaa;
+    padding:5px 10px;
+}
