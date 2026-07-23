@@ -1,3 +1,4 @@
+using System.ComponentModel.DataAnnotations;
 using System.ComponentModel.DataAnnotations.Schema;
 
 namespace CoffeeLoyalty.Api.Entities;
@@ -8,6 +9,11 @@ public class OrderItem
 
     public int OrderId { get; set; }
     public int ProductId { get; set; }
+
+    /// <summary>Product name frozen at order time — like UnitPriceSnapshot, it preserves what was actually sold so a later product rename never rewrites past receipts (Decision 3).</summary>
+    [Required]
+    [MaxLength(100)]
+    public string ProductNameSnapshot { get; set; } = string.Empty;
 
     /// <summary>Decimal to support both weight (1.5 kg) and count (2 pieces).</summary>
     [Column(TypeName = "decimal(18,3)")]

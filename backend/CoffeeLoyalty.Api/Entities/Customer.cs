@@ -22,7 +22,7 @@ public class Customer
     /// <summary>Denormalized running balance (perf decision); guaranteed >= 0 by a DB CHECK constraint.</summary>
     public int PointsBalance { get; set; } = 0;
 
-    public DateTime CreatedAt { get; set; }
+    public DateTimeOffset CreatedAt { get; set; }
 
     // Navigation
     public ICollection<Order> Orders { get; set; } = new List<Order>();

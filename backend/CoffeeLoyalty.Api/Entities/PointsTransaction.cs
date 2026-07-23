@@ -18,7 +18,7 @@ public class PointsTransaction
     /// <summary>Earn / Redeem / Refund / RedeemReversal; kept separate so reports can distinguish them.</summary>
     public PointsTransactionType Type { get; set; }
 
-    public DateTime CreatedAt { get; set; }
+    public DateTimeOffset CreatedAt { get; set; }
 
     // Navigation
     public Customer Customer { get; set; } = null!;

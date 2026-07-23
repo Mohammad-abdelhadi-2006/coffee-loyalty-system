@@ -1,0 +1,114 @@
+using CoffeeLoyalty.Api.Entities;
+using CoffeeLoyalty.Api.Enums;
+using Microsoft.EntityFrameworkCore;
+
+namespace CoffeeLoyalty.Api.Data;
+
+public class AppDbContext : DbContext
+{
+    public AppDbContext(DbContextOptions<AppDbContext> options) : base(options)
+    {
+    }
+
+    public DbSet<Customer> Customers => Set<Customer>();
+    public DbSet<Employee> Employees => Set<Employee>();
+    public DbSet<Product> Products => Set<Product>();
+    public DbSet<Order> Orders => Set<Order>();
+    public DbSet<OrderItem> OrderItems => Set<OrderItem>();
+    public DbSet<PointsTransaction> PointsTransactions => Set<PointsTransaction>();
+
+    protected override void OnModelCreating(ModelBuilder modelBuilder)
+    {
+        base.OnModelCreating(modelBuilder);
+
+        // Enums stored as strings (readable in the DB, decoupled from ordinal values).
+        modelBuilder.Entity<Employee>()
+            .Property(e => e.Role)
+            .HasConversion<string>()
+            .HasMaxLength(20);
+
+        modelBuilder.Entity<Order>()
+            .Property(o => o.Status)
+            .HasConversion<string>()
+            .HasMaxLength(20);
+
+        modelBuilder.Entity<PointsTransaction>()
+            .Property(pt => pt.Type)
+            .HasConversion<string>()
+            .HasMaxLength(20);
+
+        modelBuilder.Entity<Product>()
+            .Property(p => p.UnitType)
+            .HasConversion<string>()
+            .HasMaxLength(20);
+
+        // Customer: phone is the identity (regular UK), Firebase UID is a filtered UK
+        // (NULL until first app login; SQL Server treats NULL as a value otherwise).
+        modelBuilder.Entity<Customer>(customer =>
+        {
+            customer.HasIndex(c => c.PhoneNumber).IsUnique();
+
+            customer.HasIndex(c => c.FirebaseUid)
+                .IsUnique()
+                .HasFilter("[FirebaseUid] IS NOT NULL");
+
+            customer.ToTable(t => t.HasCheckConstraint(
+                "CK_Customer_Balance",
+                "[PointsBalance] >= 0"));
+        });
+
+        // Employee: username is the login identity (regular UK).
+        modelBuilder.Entity<Employee>()
+            .HasIndex(e => e.Username).IsUnique();
+
+        // OrderItem: returned quantity is bounded by the ordered quantity.
+        modelBuilder.Entity<OrderItem>()
+            .ToTable(t => t.HasCheckConstraint(
+                "CK_OrderItem_Returned",
+                "[ReturnedQuantity] >= 0 AND [ReturnedQuantity] <= [Quantity]"));
+
+        // Order: points columns can never go negative.
+        modelBuilder.Entity<Order>()
+            .ToTable(t => t.HasCheckConstraint(
+                "CK_Order_Points",
+                "[PointsEarned] >= 0 AND [PointsRedeemed] >= 0"));
+
+        // Restrict delete on every FK — entities are soft-deleted and kept for history,
+        // so a physical delete must never cascade through orders / points movements.
+        modelBuilder.Entity<Order>()
+            .HasOne(o => o.Customer)
+            .WithMany(c => c.Orders)
+            .HasForeignKey(o => o.CustomerId)
+            .OnDelete(DeleteBehavior.Restrict);
+
+        modelBuilder.Entity<Order>()
+            .HasOne(o => o.Employee)
+            .WithMany(e => e.Orders)
+            .HasForeignKey(o => o.EmployeeId)
+            .OnDelete(DeleteBehavior.Restrict);
+
+        modelBuilder.Entity<OrderItem>()
+            .HasOne(oi => oi.Order)
+            .WithMany(o => o.OrderItems)
+            .HasForeignKey(oi => oi.OrderId)
+            .OnDelete(DeleteBehavior.Restrict);
+
+        modelBuilder.Entity<OrderItem>()
+            .HasOne(oi => oi.Product)
+            .WithMany(p => p.OrderItems)
+            .HasForeignKey(oi => oi.ProductId)
+            .OnDelete(DeleteBehavior.Restrict);
+
+        modelBuilder.Entity<PointsTransaction>()
+            .HasOne(pt => pt.Customer)
+            .WithMany(c => c.PointsTransactions)
+            .HasForeignKey(pt => pt.CustomerId)
+            .OnDelete(DeleteBehavior.Restrict);
+
+        modelBuilder.Entity<PointsTransaction>()
+            .HasOne(pt => pt.Order)
+            .WithMany(o => o.PointsTransactions)
+            .HasForeignKey(pt => pt.OrderId)
+            .OnDelete(DeleteBehavior.Restrict);
+    }
+}

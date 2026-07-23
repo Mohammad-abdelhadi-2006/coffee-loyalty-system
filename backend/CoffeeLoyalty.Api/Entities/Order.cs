@@ -23,7 +23,7 @@ public class Order
     // TODO: stored as string via HasConversion<string>() in Fluent API.
     public OrderStatus Status { get; set; }
 
-    public DateTime CreatedAt { get; set; }
+    public DateTimeOffset CreatedAt { get; set; }
 
     // Navigation
     public Customer Customer { get; set; } = null!;

@@ -52,7 +52,7 @@ Every non-2xx response has exactly this body:
 | `ORDER_NOT_FOUND` | 404 | No order with that id |
 | `ORDER_ALREADY_CANCELLED` | 400 | Cancel/return on a cancelled order |
 | `ORDER_HAS_RETURNS` | 400 | Full cancel after a partial return happened (ERD rule) |
-| `RETURN_WINDOW_EXPIRED` | 400 | Past `ReturnWindowDays`, Jordan time (decision 16) |
+| `RETURN_WINDOW_EXPIRED` | 400 | Past end of the day following the order, Jordan time (decision 16) |
 | `ITEM_NOT_IN_ORDER` | 400 | `orderItemId` doesn't belong to this order |
 | `RETURN_EXCEEDS_QUANTITY` | 400 | Returned qty > remaining (Quantity − ReturnedQuantity) |
 | `INSUFFICIENT_BALANCE_FOR_RETURN` | 400 | Claw-back would push balance below zero (decision 8) |
@@ -249,6 +249,7 @@ The customer's recent orders — feeds the returns screen.
   }
 ]
 ```
+  `status` ∈ `Completed` | `Returned` | `Cancelled` (ERD rule). `Returned` is a one-way state set on the first return; whether it is partial or full is derived from each item's `returnedQuantity`, not a separate status.
 - **Errors:** `CUSTOMER_NOT_FOUND`
 
 ### GET /api/customers/me

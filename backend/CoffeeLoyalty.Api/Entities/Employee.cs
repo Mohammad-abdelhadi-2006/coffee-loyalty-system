@@ -25,7 +25,7 @@ public class Employee
     /// <summary>Soft-delete flag; deactivated (resigned/terminated) employees are rejected at login but kept for old Orders' FK.</summary>
     public bool IsActive { get; set; } = true;
 
-    public DateTime CreatedAt { get; set; }
+    public DateTimeOffset CreatedAt { get; set; }
 
     // Navigation
     public ICollection<Order> Orders { get; set; } = new List<Order>();

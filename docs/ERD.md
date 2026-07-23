@@ -8,7 +8,7 @@ erDiagram
         string PhoneNumber UK
         string FirebaseUid "nullable, filtered UK"
         int PointsBalance
-        datetime CreatedAt
+        datetimeoffset CreatedAt
     }
     Employee {
         int Id PK
@@ -17,7 +17,7 @@ erDiagram
         string PasswordHash
         string Role
         bool IsActive
-        datetime CreatedAt
+        datetimeoffset CreatedAt
     }
     Product {
         int Id PK
@@ -35,12 +35,13 @@ erDiagram
         int PointsEarned
         int PointsRedeemed
         string Status
-        datetime CreatedAt
+        datetimeoffset CreatedAt
     }
     OrderItem {
         int Id PK
         int OrderId FK
         int ProductId FK
+        string ProductNameSnapshot
         decimal Quantity
         decimal ReturnedQuantity
         decimal UnitPriceSnapshot
@@ -51,7 +52,7 @@ erDiagram
         int OrderId FK
         int Amount
         string Type
-        datetime CreatedAt
+        datetimeoffset CreatedAt
     }
 
     Customer ||--o{ Order : places
@@ -70,19 +71,22 @@ erDiagram
 - **Product.UnitType**: `Piece` or `Kg` — determines whether Quantity is a count or a weight.
 - **Product.IsAvailable**: out of stock today — temporary, toggled by the cashier.
 - **Product.IsActive**: on the menu at all — permanent, toggled by the admin. `DELETE /api/products/{id}` sets this to false (soft delete). Physical DELETE never happens; old OrderItems keep their FK reference. See decisions.md #14.
-- **Order.Status**: `Completed` or `Cancelled`.
-- **Cancellation (Status = Cancelled)**: allowed **only if** no partial return exists on the order (every OrderItem.ReturnedQuantity = 0) — otherwise points would be reversed twice. Once any partial return happens, the only path is completing returns line by line. Cancellation reverses points in both directions: claws back PointsEarned (`Refund`, negative) and restores PointsRedeemed (`RedeemReversal`, positive), both linked to the same OrderId. Partial-return details and calculations live in the api-contract (Returns section, week 2).
-- **Return window**: returns and cancellations are accepted only within `ReturnWindowDays = 1` of Order.CreatedAt, compared in **Jordan time, not UTC**. See decisions.md #16.
+- **Order.Status**: `Completed`, `Returned`, or `Cancelled`.
+- **Status transition on return**: the first return on an order (any OrderItem.ReturnedQuantity moving above 0) transitions the order `Completed → Returned`. The status stays `Returned` for all subsequent line-by-line returns, whether the order ends up partially or fully returned; it is a **one-way** move (a `Returned` order never goes back to `Completed`). Whether a `Returned` order is partial or full is *derived* at read time (`ReturnedQuantity == Quantity` on every line), not stored. See decisions.md #20.
+- **Cancellation (Status = Cancelled)**: allowed **only if** the order is still `Completed` with no return (every OrderItem.ReturnedQuantity = 0) — otherwise points would be reversed twice. A `Returned` order can **never** be cancelled (the API rejects it); once any return happens, the only path is completing returns line by line. Cancellation reverses points in both directions: claws back PointsEarned (`Refund`, negative) and restores PointsRedeemed (`RedeemReversal`, positive), both linked to the same OrderId. `Cancelled` (sale never validly happened, lines keep `ReturnedQuantity = 0`) and a fully `Returned` order (real sale, goods came back item by item) stay distinguishable in reports. Partial-return details and calculations live in the api-contract (Returns section, week 2).
+- **Return window**: returns and cancellations are accepted until the **end of the calendar day following the order** in Jordan time (`Asia/Amman`, UTC+3) — i.e. the deadline is `23:59:59.999` on `date(CreatedAt in Amman) + ReturnWindowDays`, **not** a rolling 24 hours from CreatedAt. So the usable window varies (~25–48h) and always errs in the customer's favour. Past the deadline the endpoint rejects with `RETURN_WINDOW_EXPIRED`. `ReturnWindowDays = 1`. See decisions.md #16.
 - **Order.Total**: full order value — always equals the sum of its lines (`Σ Quantity × UnitPriceSnapshot`). Cash paid is **computed**, never stored.
 - **Order.PointsRedeemed**: points spent on this order — defaults to 0. Subject to the redemption constraints below; any order request violating them is rejected with a validation error before anything is written.
 - **Order.PointsEarned**: calculated on cash paid only, not on Total (decision 9).
 - **OrderItem.Quantity**: decimal to support both weight (1.5 kg) and count (2 pieces).
 - **OrderItem.ReturnedQuantity**: defaults to 0 — supports partial returns.
+- **OrderItem.ProductNameSnapshot**: product name at order time (`nvarchar(100)`, NOT NULL) — frozen alongside the price, so a later product rename never rewrites past receipts. Order display and receipts read this column, not `Product.Name`; the FK to Product is kept only for reporting. See decisions.md #3.
 - **OrderItem.UnitPriceSnapshot**: unit price at order time — frozen, unaffected by catalog price changes.
 - **PointsTransaction.OrderId**: NOT NULL — every points movement has a justifying order, no exceptions. Manual adjustments were removed by design (decisions.md #12): the schema itself forbids sourceless points movements.
 - **PointsTransaction.Type**: `Earn` / `Redeem` / `Refund` / `RedeemReversal`. `Refund` is always negative (clawing back earned points on return/cancellation); `RedeemReversal` is always positive (restoring spent points on cancellation). Kept as separate types so reports can distinguish them.
 - **PointsTransaction.Amount**: the sign reflects the effect on the balance (positive = increase, negative = decrease) — Type describes the reason, not the sign.
 - **Rates**: `PointsPerDinar = 5`, `RedeemRate = 100`, `MinRedeemPoints = 250`, and `ReturnWindowDays = 1` live in `LoyaltyConstants` — one place, not buried in formulas.
+- **CreatedAt** (Customer, Employee, Order, PointsTransaction): stored as `DateTimeOffset` (SQL Server `datetimeoffset`), not `DateTime`. The offset is preserved so an instant is unambiguous regardless of server timezone; return/cancellation windows are then compared in **Jordan time** by converting from the stored offset (see the Return window note above).
 - **Employee.IsActive**: defaults to true. Deactivating an employee
   (resignation/termination) is done via `IsActive = false` through
   `PATCH /api/employees/{id}/status` (admin only) — never a physical
@@ -110,6 +114,11 @@ ALTER TABLE Orders ADD CONSTRAINT CK_Order_Points
 - Order total: `Total = Σ (Quantity × UnitPriceSnapshot)`
 - Cash paid: `CashPaid = Total − (PointsRedeemed / RedeemRate)`
 - Points earned: `PointsEarned = floor(CashPaid × PointsPerDinar)`
+
+`Total`, `PointsEarned`, and `PointsRedeemed` are immutable snapshots of order creation and are **never** rewritten by a return or cancellation (decisions.md #22). The current net value after returns is always *derived*, never stored:
+
+- Net total: `NetTotal = Σ ((Quantity − ReturnedQuantity) × UnitPriceSnapshot)`
+- Net points earned: `NetPointsEarned = PointsEarned + Σ (Refund transactions on this order)` — `Refund` amounts are negative, so this subtracts the clawed-back points.
 
 ### Redemption Constraints (validated at order creation)
 
