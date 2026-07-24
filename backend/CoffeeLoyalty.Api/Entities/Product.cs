@@ -19,6 +19,11 @@ public class Product
     /// <summary>Piece or Kg; determines whether OrderItem.Quantity is a count or a weight.</summary>
     public UnitType UnitType { get; set; }
 
+    // TODO: stored as string via HasConversion<string>() in Fluent API.
+    /// <summary>Menu section. Stored in English; the client maps to the
+    /// display label.</summary>
+    public ProductCategory Category { get; set; }
+
     /// <summary>Temporary out-of-stock toggle by the cashier (available today or not).</summary>
     public bool IsAvailable { get; set; } = true;
 
