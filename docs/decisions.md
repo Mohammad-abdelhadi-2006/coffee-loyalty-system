@@ -306,3 +306,19 @@
   it is queried. Deriving points from the transaction ledger rather than the
   order columns keeps the report consistent with Decision 22's rule that order
   figures are immutable.
+
+## 24. Product Category as a Fixed Enum
+- **Decision:** Product gains a `Category` field, stored as one of six
+  fixed string values (HotCoffee, ColdCoffee, Mojito, Milkshake, Desserts,
+  CoffeeBeans) via HasConversion<string>(), matching the UnitType pattern.
+  Values are stored in English; the Flutter app and the React dashboard
+  each map them to display labels.
+- **Rejected alternative:** A free-text category string / a separate
+  Categories table with a FK.
+- **Why:** Free text lets the same section be spelled inconsistently and
+  splits the menu into duplicates. A separate table with admin CRUD is
+  real overhead (extra entity, endpoints, a management screen) for a fixed
+  list that changes maybe once a year — deferred until the shop actually
+  needs to edit categories. Storing English keeps the API payload and the
+  enum consistent with the rest of the system; localisation is a display
+  concern owned by the clients, not the backend.

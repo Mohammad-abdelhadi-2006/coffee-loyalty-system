@@ -42,6 +42,11 @@ public class AppDbContext : DbContext
             .HasConversion<string>()
             .HasMaxLength(20);
 
+        modelBuilder.Entity<Product>()
+            .Property(p => p.Category)
+            .HasConversion<string>()
+            .HasMaxLength(20);
+
         // Customer: phone is the identity (regular UK), Firebase UID is a filtered UK
         // (NULL until first app login; SQL Server treats NULL as a value otherwise).
         modelBuilder.Entity<Customer>(customer =>
@@ -110,5 +115,17 @@ public class AppDbContext : DbContext
             .WithMany(o => o.PointsTransactions)
             .HasForeignKey(pt => pt.OrderId)
             .OnDelete(DeleteBehavior.Restrict);
+
+        // Earn / Redeem / RedeemReversal happen at most once per order.
+        // Refund is excluded because partial returns are processed line by line.
+        modelBuilder.Entity<PointsTransaction>()
+            .HasIndex(pt => new { pt.OrderId, pt.Type })
+            .IsUnique()
+            .HasFilter("[Type] <> 'Refund'")
+            .HasDatabaseName("UX_PointsTransaction_Order_Type");
+
+        // Daily sales reports filter on the order date.
+        modelBuilder.Entity<Order>()
+            .HasIndex(o => o.CreatedAt);
     }
 }

@@ -156,6 +156,7 @@ Activate/deactivate an employee (decision 18). Never a physical delete.
     "name": "كابتشينو",
     "price": 2.50,
     "unitType": "Piece",
+    "category": "HotCoffee",
     "isAvailable": true,
     "isActive": true
   }
@@ -166,9 +167,10 @@ Activate/deactivate an employee (decision 18). Never a physical delete.
 - **Auth:** admin
 - **Request:**
 ```json
-{ "name": "كابتشينو", "price": 2.50, "unitType": "Piece" }
+{ "name": "كابتشينو", "price": 2.50, "unitType": "Piece", "category": "HotCoffee" }
 ```
   `unitType` ∈ `Piece` | `Kg`.
+  `category` ∈ `HotCoffee` | `ColdCoffee` | `Mojito` | `Milkshake` | `Desserts` | `CoffeeBeans`.
 - **Success 201:** the created product object.
 - **Errors:** `VALIDATION_ERROR`
 

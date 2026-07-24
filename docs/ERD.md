@@ -24,6 +24,7 @@ erDiagram
         string Name
         decimal Price
         string UnitType
+        string Category
         bool IsAvailable
         bool IsActive
     }
@@ -69,6 +70,10 @@ erDiagram
 - **Customer.FirebaseUid**: nullable — linked on first firebase-login. Customers registered by the cashier keep a NULL UID until their first app login; their balance is preserved and linked automatically (matched via normalized PhoneNumber). Uniqueness is enforced with a **filtered unique index** (`WHERE FirebaseUid IS NOT NULL`) — SQL Server treats NULL as a value in a regular unique index, so any two cashier-registered customers would break it.
 - **Customer.PointsBalance**: denormalized (performance decision). **Increases** (Earn, RedeemReversal): atomic increment inside the DB transaction — `SET PointsBalance = PointsBalance + @delta`. **Decreases** (Redeem, Refund): conditional atomic UPDATE — `SET PointsBalance = PointsBalance - @x WHERE Id = @id AND PointsBalance >= @x` — with a rows-affected check; 0 rows = operation rejected. The check and the deduction are one statement, never a separate read-then-write (TOCTOU). Guarantees PointsBalance ≥ 0 always, even under double-submit from the cashier device.
 - **Product.UnitType**: `Piece` or `Kg` — determines whether Quantity is a count or a weight.
+- **Product.Category**: `HotCoffee`, `ColdCoffee`, `Mojito`, `Milkshake`,
+  `Desserts`, or `CoffeeBeans`. Stored as a string (same pattern as
+  UnitType). Stored in English; the client maps each value to its display
+  label.
 - **Product.IsAvailable**: out of stock today — temporary, toggled by the cashier.
 - **Product.IsActive**: on the menu at all — permanent, toggled by the admin. `DELETE /api/products/{id}` sets this to false (soft delete). Physical DELETE never happens; old OrderItems keep their FK reference. See decisions.md #14.
 - **Order.Status**: `Completed`, `Returned`, or `Cancelled`.
