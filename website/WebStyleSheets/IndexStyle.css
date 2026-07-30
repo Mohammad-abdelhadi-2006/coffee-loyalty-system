@@ -1,9 +1,10 @@
-
+body{
+    background: #FDFBF7;
+}
 section{
     height: 1000px;
 }
 #MainPic{
-    background-image: url('../Images/homepic.webp');
     background-size: cover;
     background-position: center;
     background-repeat: no-repeat;
@@ -14,12 +15,4 @@ section{
     flex-direction: column;
     justify-content: center;
     align-items: center;
-}
-
-#about-title{
-
-}
-
-#phone-app{
-
 }

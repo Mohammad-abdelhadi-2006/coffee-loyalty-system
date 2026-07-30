@@ -1,0 +1,20 @@
+.Filter-container{
+    display: flex;
+    gap: 12px;
+    margin: 20px;
+}
+
+.Filter-container button{
+    padding: 15px;
+    border: 1px solid #2C1E16;
+    border-radius: 10px;
+    font-size: 20px;
+    cursor: pointer;
+
+}
+
+.Filter-container button:hover{
+    background: #2C1E16;
+    color: #e9e7e7;
+    transition: all 0.3s ease;
+}

@@ -1,50 +1,62 @@
-div{
+div {
     display: flex;
     align-items: center;
 }
 
-nav{
-    background: #4A3525;
+.Header-nav {
+    background: #2C1E16;
     width: 99%;
+    height: 80%;
+    text-align: center;
+    margin: 10px;
+    border-radius: 10px;
+}
+
+nav ul {
+    display: flex;
+    padding: 10px;
+    margin: 10px;
+    list-style-type: none;
+    justify-content: space-between;
+    align-items: center;
+}
+
+.nav-logo {
+
+}
+
+.Nav-link {
+    display: flex;
+    gap: 50px;
+}
+
+.Nav-link a:hover {
+    background: #e9e7e7;
+    color: #2C1E16;
+    transition: all 0.3s ease;
+}
+
+nav a {
+    text-decoration: none;
+    color: white;
+    font-size: 30px;
+    padding: 10px;
+    border-radius: 10px;
+
+}
+
+nav li {
+    padding: 10px;
     text-align: center;
 }
 
-nav ul{
-    display: flex;
-    padding: 10px;
-    margin:10px;
-    list-style-type: none;
-    justify-content: space-between;
-
-}
-
-    a img{
-    margin: 0px;
-    padding: 0px;
-    
-}
-
-nav a{
-    text-decoration: none;
-    color: white;
-    font-size:30px;
-    padding:10px;
-}
-
-nav li{
-    display:inline;
-    padding:10px;
-    text-align:   center;
-}
-
-nav #DownloadApp,#Eng{
-    color:black;
-    background: #f1ccaa;
-    padding:5px 10px;
-}
 
 /* --------------------------------------------------------------------------------------------------------------------------------- */
-footer{
-    border-top: #4A3525 solid;
+footer {
+    background: #2C1E16;
+    border-top: 1px solid #4A3525;
+    /* تعديل الترتيب الصحيح */
     padding: 20px;
+    width: 100%;
+    height: 100px;
 }
