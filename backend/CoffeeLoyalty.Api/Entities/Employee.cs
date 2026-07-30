@@ -25,6 +25,9 @@ public class Employee
     /// <summary>Soft-delete flag; deactivated (resigned/terminated) employees are rejected at login but kept for old Orders' FK.</summary>
     public bool IsActive { get; set; } = true;
 
+    /// <summary>Bumping this invalidates every token already issued to this employee (decision 25). No endpoint exposes it.</summary>
+    public int TokenVersion { get; set; } = 0;
+
     public DateTimeOffset CreatedAt { get; set; }
 
     // Navigation

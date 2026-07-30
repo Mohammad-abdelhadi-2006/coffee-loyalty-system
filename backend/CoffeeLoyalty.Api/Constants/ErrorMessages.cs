@@ -28,6 +28,9 @@ public static class ErrorMessages
     /// <summary>For <see cref="ErrorCodes.Forbidden"/>.</summary>
     public const string Forbidden = "لا تملك صلاحية للقيام بهذا الإجراء";
 
+    /// <summary>For <see cref="ErrorCodes.TooManyRequests"/>.</summary>
+    public const string TooManyRequests = "عدد كبير من المحاولات، يرجى المحاولة بعد قليل";
+
     /// <summary>For <see cref="ErrorCodes.InternalError"/>.</summary>
     public const string InternalError = "حدث خطأ غير متوقع، يرجى المحاولة لاحقاً";
 }

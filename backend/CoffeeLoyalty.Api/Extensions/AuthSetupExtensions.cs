@@ -1,10 +1,16 @@
+using System.Security.Claims;
 using System.Text;
+using System.Threading.RateLimiting;
 using CoffeeLoyalty.Api.Common;
 using CoffeeLoyalty.Api.Constants;
+using CoffeeLoyalty.Api.Data;
 using CoffeeLoyalty.Api.Options;
 using CoffeeLoyalty.Api.Services;
 using Microsoft.AspNetCore.Authentication.JwtBearer;
 using Microsoft.AspNetCore.Mvc;
+using Microsoft.AspNetCore.RateLimiting;
+using Microsoft.EntityFrameworkCore;
+using Microsoft.IdentityModel.JsonWebTokens;
 using Microsoft.IdentityModel.Tokens;
 
 namespace CoffeeLoyalty.Api.Extensions;
@@ -14,6 +20,17 @@ namespace CoffeeLoyalty.Api.Extensions;
 /// </summary>
 public static class AuthSetupExtensions
 {
+    /// <summary>
+    /// Name of the rate-limiting policy guarding the two anonymous auth endpoints (decision 26).
+    /// </summary>
+    public const string AuthRateLimitPolicy = "auth";
+
+    /// <summary>Login attempts allowed per client IP inside one <see cref="AuthRateLimitWindow"/>.</summary>
+    private const int AuthRateLimitPermits = 10;
+
+    /// <summary>Length of the fixed window the permits are counted over.</summary>
+    private static readonly TimeSpan AuthRateLimitWindow = TimeSpan.FromMinutes(1);
+
     /// <summary>
     /// Configures JWT bearer authentication and the three role policies from the
     /// contract's auth levels, and registers the authentication services.
@@ -72,7 +89,11 @@ public static class AuthSetupExtensions
                     },
                     OnForbidden = async context =>
                         await new ApiError(ErrorCodes.Forbidden, ErrorMessages.Forbidden)
-                            .WriteToAsync(context.Response, StatusCodes.Status403Forbidden, context.HttpContext.RequestAborted)
+                            .WriteToAsync(context.Response, StatusCodes.Status403Forbidden, context.HttpContext.RequestAborted),
+
+                    // Signature and lifetime are not enough: the token is also checked
+                    // against the current database state (decision 25).
+                    OnTokenValidated = ValidateAgainstDatabaseAsync
                 };
             });
 
@@ -92,11 +113,97 @@ public static class AuthSetupExtensions
                 .RequireRole(RoleNames.Admin));
         });
 
+        services.AddRateLimiter(options =>
+        {
+            // The limiter writes the status itself, but keep the option honest for
+            // anything that reads it instead of the response.
+            options.RejectionStatusCode = StatusCodes.Status429TooManyRequests;
+
+            options.AddPolicy(AuthRateLimitPolicy, httpContext =>
+                // TODO: MonsterASP.NET terminates TLS in front of Kestrel, so
+                // RemoteIpAddress is the reverse proxy, not the caller — every request
+                // then shares one partition. Configure ForwardedHeadersOptions with the
+                // proxy's address (KnownProxies / KnownNetworks) and call
+                // UseForwardedHeaders before this limiter once that address is known;
+                // clearing KnownProxies instead would let anyone spoof X-Forwarded-For
+                // and sidestep the limit entirely.
+                RateLimitPartition.GetFixedWindowLimiter(
+                    httpContext.Connection.RemoteIpAddress?.ToString() ?? "unknown",
+                    _ => new FixedWindowRateLimiterOptions
+                    {
+                        PermitLimit = AuthRateLimitPermits,
+                        Window = AuthRateLimitWindow,
+
+                        // Reject immediately; a queued login attempt helps nobody.
+                        QueueLimit = 0
+                    }));
+
+            // Rejections must look like every other failure (api-contract.md → unified error shape).
+            options.OnRejected = async (context, cancellationToken) =>
+                await new ApiError(ErrorCodes.TooManyRequests, ErrorMessages.TooManyRequests)
+                    .WriteToAsync(context.HttpContext.Response, StatusCodes.Status429TooManyRequests, cancellationToken);
+        });
+
         services.AddSingleton<IJwtTokenService, JwtTokenService>();
         services.AddSingleton<IFirebaseAuthService, FirebaseAuthService>();
+        services.AddSingleton<IPasswordVerifier, BCryptPasswordVerifier>();
         services.AddScoped<IAuthService, AuthService>();
 
         return services;
+    }
+
+    /// <summary>
+    /// Re-checks an otherwise valid token against the database (decision 25): the
+    /// <c>TokenVersion</c> it was issued with must still match the stored value, and an
+    /// employee must still be active. Costs one primary-key read per authenticated
+    /// request — the price of being able to revoke a token at all.
+    /// </summary>
+    /// <param name="context">The token-validation context; <see cref="TokenValidatedContext.Fail(string)"/> turns into the usual 401 body via <c>OnChallenge</c>.</param>
+    private static async Task ValidateAgainstDatabaseAsync(TokenValidatedContext context)
+    {
+        if (context.Principal is not { } principal
+            || !int.TryParse(principal.FindFirstValue(JwtRegisteredClaimNames.Sub), out var userId)
+            || !int.TryParse(principal.FindFirstValue(JwtTokenService.TokenVersionClaimType), out var tokenVersion))
+        {
+            // Correctly signed but missing the claims we validate on — a token this API
+            // no longer issues, or one issued before decision 25.
+            context.Fail("The token does not carry the claims required to validate it.");
+            return;
+        }
+
+        // Scoped: the DbContext must come from this request, not from the singleton
+        // container the JwtBearer options were configured in.
+        var db = context.HttpContext.RequestServices.GetRequiredService<AppDbContext>();
+        var cancellationToken = context.HttpContext.RequestAborted;
+
+        if (principal.FindFirstValue(JwtTokenService.RoleClaimType) == RoleNames.Customer)
+        {
+            var storedVersion = await db.Customers
+                .AsNoTracking()
+                .Where(c => c.Id == userId)
+                .Select(c => (int?)c.TokenVersion)
+                .FirstOrDefaultAsync(cancellationToken);
+
+            if (storedVersion != tokenVersion)
+            {
+                context.Fail("The customer's tokens were revoked, or the customer no longer exists.");
+            }
+
+            return;
+        }
+
+        var employee = await db.Employees
+            .AsNoTracking()
+            .Where(e => e.Id == userId)
+            .Select(e => new { e.TokenVersion, e.IsActive })
+            .FirstOrDefaultAsync(cancellationToken);
+
+        // Re-reading IsActive here is what makes deactivation take effect on the next
+        // request instead of after the 12 h token lifetime (decision 18).
+        if (employee is null || employee.TokenVersion != tokenVersion || !employee.IsActive)
+        {
+            context.Fail("The employee's tokens were revoked, or the account is deactivated or gone.");
+        }
     }
 
     /// <summary>

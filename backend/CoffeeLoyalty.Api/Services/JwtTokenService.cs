@@ -19,6 +19,9 @@ public sealed class JwtTokenService : IJwtTokenService
     /// <summary>The claim type carrying the display name, matching TokenValidationParameters.NameClaimType.</summary>
     public const string NameClaimType = "name";
 
+    /// <summary>The claim type carrying the issuing-time <c>TokenVersion</c>, re-checked on every request (decision 25).</summary>
+    public const string TokenVersionClaimType = "tv";
+
     private readonly JwtOptions _options;
     private readonly SigningCredentials _signingCredentials;
 
@@ -35,7 +38,7 @@ public sealed class JwtTokenService : IJwtTokenService
     }
 
     /// <inheritdoc />
-    public string CreateToken(int userId, string role, string fullName, out DateTimeOffset expiresAt)
+    public string CreateToken(int userId, string role, string fullName, int tokenVersion, out DateTimeOffset expiresAt)
     {
         // JWT `exp` has one-second resolution; truncate so the value we hand the
         // client is exactly the moment the token dies, not a fraction after it.
@@ -61,7 +64,8 @@ public sealed class JwtTokenService : IJwtTokenService
                 new Claim(JwtRegisteredClaimNames.Sub, userId.ToString()),
                 new Claim(JwtRegisteredClaimNames.Jti, Guid.NewGuid().ToString("N")),
                 new Claim(RoleClaimType, role),
-                new Claim(NameClaimType, fullName)
+                new Claim(NameClaimType, fullName),
+                new Claim(TokenVersionClaimType, tokenVersion.ToString())
             ])
         };
 

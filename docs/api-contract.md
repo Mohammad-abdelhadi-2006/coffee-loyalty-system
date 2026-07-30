@@ -58,6 +58,7 @@ Every non-2xx response has exactly this body:
 | `INSUFFICIENT_BALANCE_FOR_RETURN` | 400 | Claw-back would push balance below zero (decision 8) |
 | `ORDER_PAID_WITH_POINTS` | 400 | Partial return on an order where `PointsRedeemed > 0` (decision 19) |
 | `VALIDATION_ERROR` | 400 | Any other malformed request body |
+| `TOO_MANY_REQUESTS` | 429 | Too many auth attempts from one client IP (decision 26) |
 
 ---
 
@@ -80,7 +81,7 @@ Employee login (dashboard).
   "expiresAt": "2026-07-15T20:00:00Z"
 }
 ```
-- **Errors:** `INVALID_CREDENTIALS`, `ACCOUNT_DISABLED`
+- **Errors:** `INVALID_CREDENTIALS`, `ACCOUNT_DISABLED`, `TOO_MANY_REQUESTS`
 
 ### POST /api/auth/firebase-login
 Customer token exchange (app). Backend verifies the Firebase ID token,
@@ -102,7 +103,10 @@ finds the customer by normalized phone, or creates one (decision 5).
   "expiresAt": "2026-09-13T10:00:00Z"
 }
 ```
-- **Errors:** `INVALID_FIREBASE_TOKEN`, `INVALID_PHONE` (Firebase phone not a valid Jordanian number)
+- **Errors:** `INVALID_FIREBASE_TOKEN`, `INVALID_PHONE` (Firebase phone not a valid Jordanian number), `TOO_MANY_REQUESTS`
+
+> Both endpoints in this section are rate-limited per client IP (decision 26); they are
+> the only ones in the contract that are. Every other endpoint is behind a token.
 
 ---
 

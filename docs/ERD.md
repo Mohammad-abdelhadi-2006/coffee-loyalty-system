@@ -8,6 +8,7 @@ erDiagram
         string PhoneNumber UK
         string FirebaseUid "nullable, filtered UK"
         int PointsBalance
+        int TokenVersion
         datetimeoffset CreatedAt
     }
     Employee {
@@ -17,6 +18,7 @@ erDiagram
         string PasswordHash
         string Role
         bool IsActive
+        int TokenVersion
         datetimeoffset CreatedAt
     }
     Product {
@@ -74,6 +76,7 @@ erDiagram
   `Desserts`, or `CoffeeBeans`. Stored as a string (same pattern as
   UnitType). Stored in English; the client maps each value to its display
   label.
+- **Customer.TokenVersion / Employee.TokenVersion**: NOT NULL, default 0. Stamped into every JWT as the `tv` claim at issue time and re-checked against this column on every authenticated request; incrementing it invalidates all of that user's existing tokens. No endpoint exposes it — an admin action or a manual `UPDATE` bumps it. See decisions.md #25.
 - **Product.IsAvailable**: out of stock today — temporary, toggled by the cashier.
 - **Product.IsActive**: on the menu at all — permanent, toggled by the admin. `DELETE /api/products/{id}` sets this to false (soft delete). Physical DELETE never happens; old OrderItems keep their FK reference. See decisions.md #14.
 - **Order.Status**: `Completed`, `Returned`, or `Cancelled`.

@@ -12,7 +12,8 @@ public interface IJwtTokenService
     /// <param name="userId">Employee id or customer id; becomes the <c>sub</c> claim.</param>
     /// <param name="role">A canonical lowercase role string from <see cref="Constants.RoleNames"/>.</param>
     /// <param name="fullName">Display name; becomes the <c>name</c> claim.</param>
+    /// <param name="tokenVersion">The user's current <c>TokenVersion</c>; re-checked on every request (decision 25).</param>
     /// <param name="expiresAt">Receives the moment the token stops being valid (UTC).</param>
     /// <returns>The compact-serialized, signed JWT.</returns>
-    string CreateToken(int userId, string role, string fullName, out DateTimeOffset expiresAt);
+    string CreateToken(int userId, string role, string fullName, int tokenVersion, out DateTimeOffset expiresAt);
 }

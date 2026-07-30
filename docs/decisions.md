@@ -147,6 +147,8 @@
 ## 15. JWT Expiry
 - **Decision:** Customer token: 365 days (repeated OTP kills the app). Employee token: 12 hours (login at shift start). No refresh tokens. Both durations live in LoyaltyConstants/appsettings.
 - **Rejected alternative:** Refresh tokens with a short access token.
+- **Superseded in part by Decision 25:** the "can't be revoked" clause below no longer
+  holds — tokens are now revocable via `TokenVersion`. Both lifetimes here are unchanged.
 - **Why:** Refresh tokens are the industry-correct answer, but their cost (table + endpoint + rotation + Flutter interceptor ≈ 2 days) doesn't match the data sensitivity (coffee-shop points balance) or the project timeline. Documented accepted risk: a stolen customer token is valid up to 365 days and can't be revoked. Upgradeable later without breaking anything. The customer lifetime was raised from 60 to 365 days because a stolen customer token is low-risk (points balance only) and convenience is preferred; the employee token stays 12 hours because there is no token revocation.
 
 ## 16. Return Window: End of the Following Day
@@ -322,3 +324,58 @@
   needs to edit categories. Storing English keeps the API payload and the
   enum consistent with the rest of the system; localisation is a display
   concern owned by the clients, not the backend.
+
+## 25. Token Revocation via `TokenVersion`
+- **Decision:** `Customer` and `Employee` each gain an `int TokenVersion` column
+  (default 0, migration `AddTokenVersion`). `JwtTokenService` writes the row's current
+  value into the token as the `tv` claim at issue time. On **every authenticated
+  request**, `JwtBearerEvents.OnTokenValidated` loads the user by `sub` and fails the
+  authentication when `tv` ≠ the stored `TokenVersion` — so incrementing a user's
+  `TokenVersion` immediately invalidates every token already issued to them.
+  The same read also re-checks `Employee.IsActive`, which is the per-request check
+  Decision 18 asked for.
+  - **No endpoint exposes `TokenVersion`.** It is bumped by an admin action or a manual
+    `UPDATE` — deliberately, so there is no anonymous or self-service way to churn
+    tokens (consistent with Decision 12's "one writer" principle).
+  - A failed check returns the existing `401 UNAUTHORIZED` body via `OnChallenge`. No new
+    error code: the reason a token is dead (revoked, deactivated, deleted) is exactly
+    what we do not want to tell an unauthenticated caller. Decision 18's
+    `EMPLOYEE_DEACTIVATED` code stays unemitted and is not in the contract's registry;
+    adding it later would be an additive change, not a breaking one.
+  - **Both lifetimes from Decision 15 are unchanged** — customer 365 days, employee 12 hours.
+- **Rejected alternative:** Staying fully stateless and accepting that a leaked token is
+  valid until it expires / switching to short access tokens plus refresh tokens.
+- **Why:** Decision 15 accepted "a stolen customer token is valid up to 365 days and
+  can't be revoked" as a documented risk. A year is long enough that the risk needed a
+  lever, and this is the cheapest one that exists: one integer column, one claim, no new
+  table, no rotation protocol, no client-side interceptor — i.e. none of the ~2 days of
+  refresh-token work Decision 15 rejected. It also closes the deactivated-employee gap
+  Decision 18 described for free, since the check needs the same row read either way.
+- **Accepted cost (deliberate):** this makes authentication **stateful** — one indexed
+  primary-key read per authenticated request, which is precisely the property Decision 15
+  chose to avoid. Accepted by the maintainer on the grounds that the API already hits the
+  database on essentially every endpoint, so one extra keyed read is noise next to the
+  query the request was going to run anyway. If that stops being true, the check can be
+  cached per user with a short TTL, trading revocation latency for reads.
+
+## 26. Rate Limiting: Auth Endpoints Only
+- **Decision:** `POST /api/auth/login` and `POST /api/auth/firebase-login` are limited to
+  **10 requests per client IP per minute** (fixed window, no queue) using ASP.NET Core's
+  built-in `AddRateLimiter` — no third-party package. A rejection returns **429** in the
+  standard error body with the new code `TOO_MANY_REQUESTS`. No other endpoint is limited.
+- **Rejected alternative:** A global limiter across the whole API / per-username lockout
+  after N failed logins / no limiting at all.
+- **Why:** These two are the only anonymous endpoints that authenticate anybody, so they
+  are the only ones worth brute-forcing, and neither is on a hot path — a cashier logs in
+  once a shift and a customer once a year (Decision 15). A global limiter would throttle
+  the cashier screen mid-service for no security gain. Per-username lockout was rejected
+  because it hands an attacker a denial-of-service: guessing wrong at a known username
+  repeatedly would lock a real cashier out at the counter.
+- **Known limitation (documented, not fixed):** the partition key is
+  `RemoteIpAddress`. Behind MonsterASP.NET's reverse proxy that is the **proxy's**
+  address, so every caller would share one partition and the limit would effectively
+  apply to the whole shop. Fixing it needs `UseForwardedHeaders` configured with the
+  proxy's actual address (`KnownProxies` / `KnownNetworks`); it is left as a `TODO` in
+  `AuthSetupExtensions` rather than guessed, because clearing `KnownProxies` to make
+  `X-Forwarded-For` "just work" would let any caller spoof the header and bypass the
+  limit entirely — strictly worse than the current state.

@@ -12,9 +12,18 @@ namespace CoffeeLoyalty.Api.Services;
 /// </summary>
 public sealed class AuthService : IAuthService
 {
+    /// <summary>
+    /// A BCrypt hash of a random secret that was generated once and thrown away, at the
+    /// same work factor the seeder hashes with. Verifying against it costs exactly what
+    /// verifying a real employee's hash costs, which is the whole point — see
+    /// <see cref="LoginEmployeeAsync"/>. No password matches it.
+    /// </summary>
+    private const string DummyPasswordHash = "$2a$11$Kit2aWZhM3sIlFL.s4AwaucIVyyrAR2IMJcIKae10tXHvYv9zWf9e";
+
     private readonly AppDbContext _db;
     private readonly IJwtTokenService _jwt;
     private readonly IFirebaseAuthService _firebase;
+    private readonly IPasswordVerifier _passwords;
     private readonly ILogger<AuthService> _logger;
 
     /// <summary>
@@ -23,16 +32,19 @@ public sealed class AuthService : IAuthService
     /// <param name="db">The application database context.</param>
     /// <param name="jwt">Issues our own tokens.</param>
     /// <param name="firebase">Verifies Firebase ID tokens.</param>
+    /// <param name="passwords">Verifies submitted passwords against stored hashes.</param>
     /// <param name="logger">Diagnostics; never surfaced to the caller.</param>
     public AuthService(
         AppDbContext db,
         IJwtTokenService jwt,
         IFirebaseAuthService firebase,
+        IPasswordVerifier passwords,
         ILogger<AuthService> logger)
     {
         _db = db;
         _jwt = jwt;
         _firebase = firebase;
+        _passwords = passwords;
         _logger = logger;
     }
 
@@ -45,9 +57,14 @@ public sealed class AuthService : IAuthService
             .AsNoTracking()
             .FirstOrDefaultAsync(e => e.Username == request.Username, cancellationToken);
 
-        // An unknown username and a wrong password are deliberately indistinguishable:
-        // a different response would let anyone enumerate valid staff usernames.
-        if (employee is null || !VerifyPassword(request.Password, employee.PasswordHash))
+        // An unknown username and a wrong password must be indistinguishable in the
+        // response *and* in how long it takes to produce. Returning early on a missing
+        // row would skip BCrypt (~100 ms) and make unknown usernames measurably faster
+        // to reject, which is a username-enumeration oracle — so the submitted password
+        // is run against a throwaway hash instead and both paths do the same work.
+        var passwordMatches = _passwords.Verify(request.Password, employee?.PasswordHash ?? DummyPasswordHash);
+
+        if (employee is null || !passwordMatches)
         {
             throw ApiException.InvalidCredentials();
         }
@@ -60,7 +77,7 @@ public sealed class AuthService : IAuthService
         }
 
         var role = RoleNames.ToWireString(employee.Role);
-        var token = _jwt.CreateToken(employee.Id, role, employee.FullName, out var expiresAt);
+        var token = _jwt.CreateToken(employee.Id, role, employee.FullName, employee.TokenVersion, out var expiresAt);
 
         return new EmployeeLoginResponse
         {
@@ -84,7 +101,7 @@ public sealed class AuthService : IAuthService
 
         var customer = await FindOrCreateCustomerAsync(identity, phoneNumber, request.FullName, cancellationToken);
 
-        var token = _jwt.CreateToken(customer.Id, RoleNames.Customer, customer.FullName, out var expiresAt);
+        var token = _jwt.CreateToken(customer.Id, RoleNames.Customer, customer.FullName, customer.TokenVersion, out var expiresAt);
 
         return new CustomerLoginResponse
         {
@@ -168,8 +185,12 @@ public sealed class AuthService : IAuthService
     }
 
     /// <summary>
-    /// Attaches the Firebase uid on first link only. An already-linked customer keeps
-    /// the uid they have — re-pointing an identity is an account takeover path, not a login concern.
+    /// Attaches the Firebase uid on first link only. An already-linked customer keeps the
+    /// uid they have: a mismatch is logged and the stored uid is left unchanged, but the
+    /// login still proceeds and a token is issued. That is deliberate — Firebase has
+    /// already proved ownership of this phone number by OTP, and a new uid on the same
+    /// number is the normal outcome of re-registering the device or swapping the SIM.
+    /// Blocking it would lock the legitimate owner out of their own account.
     /// </summary>
     /// <param name="customer">The customer being logged in.</param>
     /// <param name="uid">The uid from the verified token.</param>
@@ -184,29 +205,9 @@ public sealed class AuthService : IAuthService
         if (!string.Equals(customer.FirebaseUid, uid, StringComparison.Ordinal))
         {
             _logger.LogWarning(
-                "Customer {CustomerId} logged in with Firebase uid {IncomingUid} but is linked to a different uid; keeping the existing link.",
+                "Customer {CustomerId} logged in with Firebase uid {IncomingUid} but is linked to a different uid; the login proceeds and the existing link is kept.",
                 customer.Id,
                 uid);
-        }
-    }
-
-    /// <summary>
-    /// Verifies a password against a stored BCrypt hash, treating a corrupt or
-    /// legacy hash as a failed login rather than a server error.
-    /// </summary>
-    /// <param name="password">The submitted plaintext password.</param>
-    /// <param name="passwordHash">The stored BCrypt hash.</param>
-    /// <returns><c>true</c> when the password matches.</returns>
-    private bool VerifyPassword(string password, string passwordHash)
-    {
-        try
-        {
-            return BCrypt.Net.BCrypt.Verify(password, passwordHash);
-        }
-        catch (BCrypt.Net.SaltParseException ex)
-        {
-            _logger.LogError(ex, "An employee row has an unreadable password hash.");
-            return false;
         }
     }
 }

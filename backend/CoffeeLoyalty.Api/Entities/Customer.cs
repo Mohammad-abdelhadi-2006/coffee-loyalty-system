@@ -22,6 +22,9 @@ public class Customer
     /// <summary>Denormalized running balance (perf decision); guaranteed >= 0 by a DB CHECK constraint.</summary>
     public int PointsBalance { get; set; } = 0;
 
+    /// <summary>Bumping this invalidates every token already issued to this customer (decision 25). No endpoint exposes it.</summary>
+    public int TokenVersion { get; set; } = 0;
+
     public DateTimeOffset CreatedAt { get; set; }
 
     // Navigation
