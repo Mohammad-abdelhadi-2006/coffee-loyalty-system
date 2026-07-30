@@ -49,6 +49,10 @@ public class ApiException : Exception
     public static ApiException InvalidPhone() =>
         new(ErrorCodes.InvalidPhone, StatusCodes.Status400BadRequest, ErrorMessages.InvalidPhone);
 
+    /// <summary>429 — too many failed attempts against this account (decision 27).</summary>
+    public static ApiException TooManyRequests() =>
+        new(ErrorCodes.TooManyRequests, StatusCodes.Status429TooManyRequests, ErrorMessages.TooManyRequests);
+
     /// <summary>400 — the request body failed validation.</summary>
     public static ApiException ValidationError(string? arabicMessage = null) =>
         new(ErrorCodes.ValidationError, StatusCodes.Status400BadRequest, arabicMessage ?? ErrorMessages.ValidationError);

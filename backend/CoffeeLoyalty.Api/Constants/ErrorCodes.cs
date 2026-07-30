@@ -29,7 +29,7 @@ public static class ErrorCodes
     /// <summary>403 — valid token, but the role is not allowed on this endpoint.</summary>
     public const string Forbidden = "FORBIDDEN";
 
-    /// <summary>429 — too many auth attempts from one client IP inside the rate-limit window (decision 26).</summary>
+    /// <summary>429 — too many failed authentication attempts against one account (decision 27).</summary>
     public const string TooManyRequests = "TOO_MANY_REQUESTS";
 
     /// <summary>500 — unhandled server-side failure. Details are logged, never returned.</summary>

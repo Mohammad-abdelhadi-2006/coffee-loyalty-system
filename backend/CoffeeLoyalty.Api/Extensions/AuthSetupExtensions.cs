@@ -1,6 +1,5 @@
 using System.Security.Claims;
 using System.Text;
-using System.Threading.RateLimiting;
 using CoffeeLoyalty.Api.Common;
 using CoffeeLoyalty.Api.Constants;
 using CoffeeLoyalty.Api.Data;
@@ -8,7 +7,6 @@ using CoffeeLoyalty.Api.Options;
 using CoffeeLoyalty.Api.Services;
 using Microsoft.AspNetCore.Authentication.JwtBearer;
 using Microsoft.AspNetCore.Mvc;
-using Microsoft.AspNetCore.RateLimiting;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.IdentityModel.JsonWebTokens;
 using Microsoft.IdentityModel.Tokens;
@@ -21,24 +19,13 @@ namespace CoffeeLoyalty.Api.Extensions;
 public static class AuthSetupExtensions
 {
     /// <summary>
-    /// Name of the rate-limiting policy guarding the two anonymous auth endpoints (decision 26).
-    /// </summary>
-    public const string AuthRateLimitPolicy = "auth";
-
-    /// <summary>Login attempts allowed per client IP inside one <see cref="AuthRateLimitWindow"/>.</summary>
-    private const int AuthRateLimitPermits = 10;
-
-    /// <summary>Length of the fixed window the permits are counted over.</summary>
-    private static readonly TimeSpan AuthRateLimitWindow = TimeSpan.FromMinutes(1);
-
-    /// <summary>
     /// Configures JWT bearer authentication and the three role policies from the
     /// contract's auth levels, and registers the authentication services.
     /// </summary>
     /// <param name="services">The service collection.</param>
     /// <param name="configuration">Application configuration (User Secrets / environment).</param>
     /// <returns>The same collection, for chaining.</returns>
-    /// <exception cref="InvalidOperationException">The <c>Jwt</c> section is missing or weak.</exception>
+    /// <exception cref="InvalidOperationException">The <c>Jwt</c> or <c>LoginThrottle</c> section is missing or invalid.</exception>
     public static IServiceCollection AddCoffeeLoyaltyAuth(
         this IServiceCollection services,
         IConfiguration configuration)
@@ -49,6 +36,18 @@ public static class AuthSetupExtensions
         jwtOptions.Validate();
 
         services.Configure<JwtOptions>(configuration.GetSection(JwtOptions.SectionName));
+
+        // Same rule for the throttle: a misconfigured section must not be discovered
+        // by a user who cannot log in (decision 27).
+        var throttleOptions = configuration.GetSection(LoginThrottleOptions.SectionName).Get<LoginThrottleOptions>()
+            ?? new LoginThrottleOptions();
+
+        throttleOptions.Validate();
+
+        services.Configure<LoginThrottleOptions>(configuration.GetSection(LoginThrottleOptions.SectionName));
+
+        // Backing store for the login throttle.
+        services.AddMemoryCache();
 
         services.AddAuthentication(JwtBearerDefaults.AuthenticationScheme)
             .AddJwtBearer(options =>
@@ -113,40 +112,10 @@ public static class AuthSetupExtensions
                 .RequireRole(RoleNames.Admin));
         });
 
-        services.AddRateLimiter(options =>
-        {
-            // The limiter writes the status itself, but keep the option honest for
-            // anything that reads it instead of the response.
-            options.RejectionStatusCode = StatusCodes.Status429TooManyRequests;
-
-            options.AddPolicy(AuthRateLimitPolicy, httpContext =>
-                // TODO: MonsterASP.NET terminates TLS in front of Kestrel, so
-                // RemoteIpAddress is the reverse proxy, not the caller — every request
-                // then shares one partition. Configure ForwardedHeadersOptions with the
-                // proxy's address (KnownProxies / KnownNetworks) and call
-                // UseForwardedHeaders before this limiter once that address is known;
-                // clearing KnownProxies instead would let anyone spoof X-Forwarded-For
-                // and sidestep the limit entirely.
-                RateLimitPartition.GetFixedWindowLimiter(
-                    httpContext.Connection.RemoteIpAddress?.ToString() ?? "unknown",
-                    _ => new FixedWindowRateLimiterOptions
-                    {
-                        PermitLimit = AuthRateLimitPermits,
-                        Window = AuthRateLimitWindow,
-
-                        // Reject immediately; a queued login attempt helps nobody.
-                        QueueLimit = 0
-                    }));
-
-            // Rejections must look like every other failure (api-contract.md → unified error shape).
-            options.OnRejected = async (context, cancellationToken) =>
-                await new ApiError(ErrorCodes.TooManyRequests, ErrorMessages.TooManyRequests)
-                    .WriteToAsync(context.HttpContext.Response, StatusCodes.Status429TooManyRequests, cancellationToken);
-        });
-
         services.AddSingleton<IJwtTokenService, JwtTokenService>();
         services.AddSingleton<IFirebaseAuthService, FirebaseAuthService>();
         services.AddSingleton<IPasswordVerifier, BCryptPasswordVerifier>();
+        services.AddSingleton<ILoginThrottle, LoginThrottle>();
         services.AddScoped<IAuthService, AuthService>();
 
         return services;

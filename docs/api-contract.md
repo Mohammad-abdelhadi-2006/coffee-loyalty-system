@@ -58,7 +58,7 @@ Every non-2xx response has exactly this body:
 | `INSUFFICIENT_BALANCE_FOR_RETURN` | 400 | Claw-back would push balance below zero (decision 8) |
 | `ORDER_PAID_WITH_POINTS` | 400 | Partial return on an order where `PointsRedeemed > 0` (decision 19) |
 | `VALIDATION_ERROR` | 400 | Any other malformed request body |
-| `TOO_MANY_REQUESTS` | 429 | Too many auth attempts from one client IP (decision 26) |
+| `TOO_MANY_REQUESTS` | 429 | Too many failed auth attempts against one account (decision 27) |
 
 ---
 
@@ -105,8 +105,12 @@ finds the customer by normalized phone, or creates one (decision 5).
 ```
 - **Errors:** `INVALID_FIREBASE_TOKEN`, `INVALID_PHONE` (Firebase phone not a valid Jordanian number), `TOO_MANY_REQUESTS`
 
-> Both endpoints in this section are rate-limited per client IP (decision 26); they are
-> the only ones in the contract that are. Every other endpoint is behind a token.
+> Both endpoints in this section are throttled **per account** — by username for
+> `/login`, by normalized phone for `/firebase-login` (decision 27). After repeated
+> failures against the same identifier, further attempts return `TOO_MANY_REQUESTS` (429)
+> until the block expires; a successful login clears the count. Clients should surface
+> the Arabic `message` and let the user retry later rather than retrying automatically.
+> No other endpoint is throttled — every one of them is behind a token.
 
 ---
 

@@ -359,6 +359,10 @@
   cached per user with a short TTL, trading revocation latency for reads.
 
 ## 26. Rate Limiting: Auth Endpoints Only
+- **Superseded by Decision 27.** The IP-partitioned middleware described here was removed
+  before it ever reached production; the "Known limitation" below is exactly why. Kept for
+  the reasoning on *which* endpoints to protect and on rejecting per-username lockout,
+  both of which still hold.
 - **Decision:** `POST /api/auth/login` and `POST /api/auth/firebase-login` are limited to
   **10 requests per client IP per minute** (fixed window, no queue) using ASP.NET Core's
   built-in `AddRateLimiter` — no third-party package. A rejection returns **429** in the
@@ -379,3 +383,57 @@
   `AuthSetupExtensions` rather than guessed, because clearing `KnownProxies` to make
   `X-Forwarded-For` "just work" would let any caller spoof the header and bypass the
   limit entirely — strictly worse than the current state.
+  *(This limitation is what Decision 27 resolves; the TODO no longer exists in the code.)*
+
+## 27. Auth Throttling: Per Account, Not Per IP
+- **Decision:** Brute-force protection on the two auth endpoints moves out of the
+  rate-limiter middleware and into `IAuthService`, keyed on the **submitted account
+  identifier**. `AddRateLimiter` / `UseRateLimiter` / `[EnableRateLimiting]` and the
+  forwarded-headers TODO are removed. `TOO_MANY_REQUESTS` (429) is unchanged as a
+  contract code, but is now raised as `ApiException.TooManyRequests()` from the service
+  instead of written by the limiter's `OnRejected`.
+- **Mechanism:** `ILoginThrottle` / `LoginThrottle` over `IMemoryCache` (built in — no
+  new package). `MaxFailures` failures inside a rolling `FailureWindow` block the key for
+  `BlockDuration`; a successful login calls `Reset`. Defaults 5 / 15 min / 15 min, bound
+  from the `LoginThrottle` section of appsettings via `LoginThrottleOptions` with
+  fail-fast validation, mirroring `JwtOptions`. Nothing in the section is secret.
+  - Employee key: `employee:` + username, trimmed and lower-cased, so padding or
+    re-casing the username cannot buy a fresh counter.
+  - Customer key: `customer:` + normalized E.164 phone, falling back to
+    `customer-uid:` + Firebase uid when the token's phone claim is unusable.
+  - **Failures are counted for identifiers that do not exist, identically to ones that
+    do.** A username that never gets throttled would be a username an attacker knows is
+    not real — that would undo the timing equalization from the previous commit through a
+    different channel.
+  - A blocked account is refused *before* the credential check, so the block is not an
+    oracle for "that password guess was correct".
+- **Rejected alternative:** Keeping the IP limiter / configuring `ForwardedHeaders` with
+  MonsterASP.NET's proxy address and keeping IP partitioning.
+- **Why:** The rate-limiter middleware runs before model binding, so it can only
+  partition on transport data — in practice the client IP. Behind the MonsterASP.NET
+  reverse proxy that IP is the **proxy's**, so all traffic collapsed into one shop-wide
+  bucket: an attacker got the whole allowance, and ordinary staff could be locked out by
+  someone else's attempts. There are real users, so shipping that was not acceptable.
+  Fixing it via `ForwardedHeaders` would have made brute-force protection depend on
+  correctly enumerating the host's proxy addresses — a value we do not control and which
+  fails open (spoofable `X-Forwarded-For`) if configured loosely. Throttling on the
+  submitted identifier needs none of that: it is proxy-independent, survives a hosting
+  change, and matches the actual threat, which is repeated guessing against a **specific
+  account** rather than volume from a specific socket.
+  Note this is not the per-username lockout Decision 26 rejected: that concern was a
+  permanent, admin-unlock lockout weaponizable for denial of service. This block expires
+  on its own after `BlockDuration`, so the worst an attacker achieves is delaying one
+  cashier by 15 minutes — and the same attacker on the old IP limiter could delay
+  *everyone*.
+- **Accepted limitations (deliberate):**
+  - **In-process store.** Counts live in this instance's memory: they reset on restart or
+    redeploy, and are not shared if the API is ever scaled out. At single-instance,
+    single-café scale this is adequate; a distributed cache is the upgrade path and needs
+    no call-site change, only a different `ILoginThrottle`.
+  - **Credential stuffing across many usernames is not stopped** — an attacker rotating
+    identifiers never exhausts any single counter. Catching that needs volume-based
+    limiting, which needs a trustworthy client IP, which is the problem this decision
+    exists to avoid. Accepted.
+  - **An unverifiable Firebase token is not throttled**, because it carries no identifier
+    to count against. Not a real gap: the token is RS256-signed by Google, so it must be
+    forged rather than guessed.

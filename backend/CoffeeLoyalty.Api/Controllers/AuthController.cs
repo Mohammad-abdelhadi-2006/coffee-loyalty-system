@@ -1,10 +1,8 @@
 using CoffeeLoyalty.Api.Common;
 using CoffeeLoyalty.Api.Dtos.Auth;
-using CoffeeLoyalty.Api.Extensions;
 using CoffeeLoyalty.Api.Services;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
-using Microsoft.AspNetCore.RateLimiting;
 
 namespace CoffeeLoyalty.Api.Controllers;
 
@@ -13,14 +11,14 @@ namespace CoffeeLoyalty.Api.Controllers;
 /// every rule lives in <see cref="IAuthService"/>.
 /// </summary>
 /// <remarks>
-/// These are the only anonymous endpoints that authenticate anybody, so they are the
-/// only ones rate-limited (decision 26): both are worth brute-forcing and neither is
-/// on a hot path.
+/// These are the only anonymous endpoints that authenticate anybody, so both are worth
+/// brute-forcing. Throttling lives in <see cref="IAuthService"/> rather than in
+/// middleware here, because only the service sees which account is being attempted
+/// (decision 27).
 /// </remarks>
 [ApiController]
 [Route("api/auth")]
 [AllowAnonymous]
-[EnableRateLimiting(AuthSetupExtensions.AuthRateLimitPolicy)]
 [Produces("application/json")]
 public class AuthController : ControllerBase
 {
@@ -44,7 +42,7 @@ public class AuthController : ControllerBase
     /// <response code="200">Authenticated; the token is ready to use.</response>
     /// <response code="400">VALIDATION_ERROR — malformed body.</response>
     /// <response code="401">INVALID_CREDENTIALS or ACCOUNT_DISABLED.</response>
-    /// <response code="429">TOO_MANY_REQUESTS — too many attempts from this client IP.</response>
+    /// <response code="429">TOO_MANY_REQUESTS — too many failed attempts against this account.</response>
     [HttpPost("login")]
     [ProducesResponseType(typeof(EmployeeLoginResponse), StatusCodes.Status200OK)]
     [ProducesResponseType(typeof(ApiError), StatusCodes.Status400BadRequest)]
@@ -67,7 +65,7 @@ public class AuthController : ControllerBase
     /// <response code="200">Authenticated; the customer was found or created.</response>
     /// <response code="400">INVALID_PHONE or VALIDATION_ERROR.</response>
     /// <response code="401">INVALID_FIREBASE_TOKEN.</response>
-    /// <response code="429">TOO_MANY_REQUESTS — too many attempts from this client IP.</response>
+    /// <response code="429">TOO_MANY_REQUESTS — too many failed attempts against this account.</response>
     [HttpPost("firebase-login")]
     [ProducesResponseType(typeof(CustomerLoginResponse), StatusCodes.Status200OK)]
     [ProducesResponseType(typeof(ApiError), StatusCodes.Status400BadRequest)]

@@ -24,6 +24,7 @@ public sealed class AuthService : IAuthService
     private readonly IJwtTokenService _jwt;
     private readonly IFirebaseAuthService _firebase;
     private readonly IPasswordVerifier _passwords;
+    private readonly ILoginThrottle _throttle;
     private readonly ILogger<AuthService> _logger;
 
     /// <summary>
@@ -33,18 +34,21 @@ public sealed class AuthService : IAuthService
     /// <param name="jwt">Issues our own tokens.</param>
     /// <param name="firebase">Verifies Firebase ID tokens.</param>
     /// <param name="passwords">Verifies submitted passwords against stored hashes.</param>
+    /// <param name="throttle">Blocks an account after repeated failures (decision 27).</param>
     /// <param name="logger">Diagnostics; never surfaced to the caller.</param>
     public AuthService(
         AppDbContext db,
         IJwtTokenService jwt,
         IFirebaseAuthService firebase,
         IPasswordVerifier passwords,
+        ILoginThrottle throttle,
         ILogger<AuthService> logger)
     {
         _db = db;
         _jwt = jwt;
         _firebase = firebase;
         _passwords = passwords;
+        _throttle = throttle;
         _logger = logger;
     }
 
@@ -53,6 +57,15 @@ public sealed class AuthService : IAuthService
         EmployeeLoginRequest request,
         CancellationToken cancellationToken = default)
     {
+        // Keyed on what the caller submitted, not on a row we found — the throttle must
+        // behave identically for a real username and an invented one (decision 27).
+        var throttleKey = EmployeeThrottleKey(request.Username);
+
+        if (_throttle.IsBlocked(throttleKey))
+        {
+            throw ApiException.TooManyRequests();
+        }
+
         var employee = await _db.Employees
             .AsNoTracking()
             .FirstOrDefaultAsync(e => e.Username == request.Username, cancellationToken);
@@ -66,15 +79,22 @@ public sealed class AuthService : IAuthService
 
         if (employee is null || !passwordMatches)
         {
+            // Counted for the unknown username too: a username that never gets throttled
+            // is a username an attacker knows does not exist.
+            _throttle.RegisterFailure(throttleKey);
             throw ApiException.InvalidCredentials();
         }
 
         // Checked only after the password is proven correct, so the deactivated state
         // is disclosed to the account's real owner and nobody else (decision 18).
+        // Not counted as a failure — the password was right; the account is simply closed.
         if (!employee.IsActive)
         {
             throw ApiException.AccountDisabled();
         }
+
+        // Proven owner: earlier typos must not accumulate toward a block.
+        _throttle.Reset(throttleKey);
 
         var role = RoleNames.ToWireString(employee.Role);
         var token = _jwt.CreateToken(employee.Id, role, employee.FullName, employee.TokenVersion, out var expiresAt);
@@ -93,13 +113,34 @@ public sealed class AuthService : IAuthService
         FirebaseLoginRequest request,
         CancellationToken cancellationToken = default)
     {
+        // A token that fails verification carries no identifier to count against, so the
+        // throttle starts here. That is not a gap worth closing: a Firebase ID token is
+        // signed by Google, so it is forged rather than guessed, and the attempts an
+        // attacker can afford against it are bounded by nothing we could count anyway.
         var identity = await _firebase.VerifyIdTokenAsync(request.FirebaseIdToken, cancellationToken);
 
         // Firebase spells the number as the user typed it during OTP; the customer's
         // identity in our database is always the E.164 form (decision 11).
-        var phoneNumber = JordanPhoneNumber.NormalizeOrThrow(identity.PhoneNumber);
+        var normalized = JordanPhoneNumber.TryNormalize(identity.PhoneNumber, out var phoneNumber) ? phoneNumber : null;
 
-        var customer = await FindOrCreateCustomerAsync(identity, phoneNumber, request.FullName, cancellationToken);
+        // The phone number when the token carries a usable one, the uid otherwise — so a
+        // token with an unusable phone claim is still counted against something stable.
+        var throttleKey = CustomerThrottleKey(identity.Uid, normalized);
+
+        if (_throttle.IsBlocked(throttleKey))
+        {
+            throw ApiException.TooManyRequests();
+        }
+
+        if (normalized is null)
+        {
+            _throttle.RegisterFailure(throttleKey);
+            throw ApiException.InvalidPhone();
+        }
+
+        var customer = await FindOrCreateCustomerAsync(identity, normalized, request.FullName, cancellationToken);
+
+        _throttle.Reset(throttleKey);
 
         var token = _jwt.CreateToken(customer.Id, RoleNames.Customer, customer.FullName, customer.TokenVersion, out var expiresAt);
 
@@ -111,6 +152,26 @@ public sealed class AuthService : IAuthService
             ExpiresAt = expiresAt
         };
     }
+
+    /// <summary>
+    /// Builds the throttle key for an employee login attempt. Case- and
+    /// whitespace-insensitive, so padding the username cannot buy a fresh counter.
+    /// </summary>
+    /// <param name="username">The username exactly as submitted.</param>
+    /// <returns>The normalized, namespaced key.</returns>
+    private static string EmployeeThrottleKey(string username) =>
+        $"employee:{username.Trim().ToLowerInvariant()}";
+
+    /// <summary>
+    /// Builds the throttle key for a customer token exchange.
+    /// </summary>
+    /// <param name="uid">The Firebase uid from the verified token.</param>
+    /// <param name="normalizedPhone">The E.164 phone number, or null when the token's phone claim is unusable.</param>
+    /// <returns>The namespaced key. Namespacing keeps a phone number and a username from ever sharing a counter.</returns>
+    private static string CustomerThrottleKey(string uid, string? normalizedPhone) =>
+        normalizedPhone is not null
+            ? $"customer:{normalizedPhone}"
+            : $"customer-uid:{uid}";
 
     /// <summary>
     /// Resolves the customer behind a verified Firebase identity, creating the row on

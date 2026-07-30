@@ -16,7 +16,8 @@ public interface IAuthService
     /// <returns>The token plus the display fields the dashboard needs.</returns>
     /// <exception cref="Common.ApiException">
     /// 401 <c>INVALID_CREDENTIALS</c> for an unknown username or wrong password;
-    /// 401 <c>ACCOUNT_DISABLED</c> for a deactivated employee (decision 18).
+    /// 401 <c>ACCOUNT_DISABLED</c> for a deactivated employee (decision 18);
+    /// 429 <c>TOO_MANY_REQUESTS</c> once this username has failed too often (decision 27).
     /// </exception>
     Task<EmployeeLoginResponse> LoginEmployeeAsync(EmployeeLoginRequest request, CancellationToken cancellationToken = default);
 
@@ -30,7 +31,8 @@ public interface IAuthService
     /// <returns>The token plus the customer's name and balance.</returns>
     /// <exception cref="Common.ApiException">
     /// 401 <c>INVALID_FIREBASE_TOKEN</c> when verification fails;
-    /// 400 <c>INVALID_PHONE</c> when the verified number is not a Jordanian mobile.
+    /// 400 <c>INVALID_PHONE</c> when the verified number is not a Jordanian mobile;
+    /// 429 <c>TOO_MANY_REQUESTS</c> once this phone number has failed too often (decision 27).
     /// </exception>
     Task<CustomerLoginResponse> LoginCustomerAsync(FirebaseLoginRequest request, CancellationToken cancellationToken = default);
 }

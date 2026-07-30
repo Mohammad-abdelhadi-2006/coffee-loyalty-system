@@ -33,10 +33,6 @@ if (app.Environment.IsDevelopment())
 
 app.UseHttpsRedirection();
 
-// Before authentication: a brute-force attempt must be turned away without ever
-// reaching the password check it is trying to exhaust.
-app.UseRateLimiter();
-
 app.UseAuthentication();
 app.UseAuthorization();
 
