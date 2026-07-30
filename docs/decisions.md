@@ -145,9 +145,9 @@
 - **Why:** Physical delete breaks the FK or erases order history (violates Decision 6). Merging the two meanings corrupts reports and the admin screen (a deleted product resurrects via the "out of stock" screen).
 
 ## 15. JWT Expiry
-- **Decision:** Customer token: 60 days (repeated OTP kills the app). Employee token: 12 hours (login at shift start). No refresh tokens. Both durations live in LoyaltyConstants/appsettings.
+- **Decision:** Customer token: 365 days (repeated OTP kills the app). Employee token: 12 hours (login at shift start). No refresh tokens. Both durations live in LoyaltyConstants/appsettings.
 - **Rejected alternative:** Refresh tokens with a short access token.
-- **Why:** Refresh tokens are the industry-correct answer, but their cost (table + endpoint + rotation + Flutter interceptor ≈ 2 days) doesn't match the data sensitivity (coffee-shop points balance) or the project timeline. Documented accepted risk: a stolen customer token is valid up to 60 days and can't be revoked. Upgradeable later without breaking anything.
+- **Why:** Refresh tokens are the industry-correct answer, but their cost (table + endpoint + rotation + Flutter interceptor ≈ 2 days) doesn't match the data sensitivity (coffee-shop points balance) or the project timeline. Documented accepted risk: a stolen customer token is valid up to 365 days and can't be revoked. Upgradeable later without breaking anything. The customer lifetime was raised from 60 to 365 days because a stolen customer token is low-risk (points balance only) and convenience is preferred; the employee token stays 12 hours because there is no token revocation.
 
 ## 16. Return Window: End of the Following Day
 - **Decision:** Returns (partial or full cancellation) are accepted until the

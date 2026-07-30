@@ -427,3 +427,19 @@ FodyWeavers.xsd
 *.msix
 *.msm
 *.msp
+
+# ---------------------------------------------------------------------------
+# Secrets — never commit. Values live in .NET User Secrets (dev) or
+# environment variables (prod). See backend/README.md.
+# ---------------------------------------------------------------------------
+
+# Firebase service-account JSON (private key inside)
+**/firebase-adminsdk*.json
+**/*firebase*service*account*.json
+**/serviceAccountKey.json
+secrets/
+
+# Local machine overrides that may hold connection strings or keys
+**/appsettings.Local.json
+**/appsettings.*.Local.json
+
