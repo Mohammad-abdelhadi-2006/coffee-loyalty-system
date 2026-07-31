@@ -65,6 +65,10 @@ public class ApiException : Exception
     public static ApiException PhoneAlreadyExists() =>
         new(ErrorCodes.PhoneAlreadyExists, StatusCodes.Status409Conflict, ErrorMessages.PhoneAlreadyExists);
 
+    /// <summary>404 — no employee carries that id.</summary>
+    public static ApiException EmployeeNotFound() =>
+        new(ErrorCodes.EmployeeNotFound, StatusCodes.Status404NotFound, ErrorMessages.EmployeeNotFound);
+
     /// <summary>400 — the request body failed validation.</summary>
     public static ApiException ValidationError(string? arabicMessage = null) =>
         new(ErrorCodes.ValidationError, StatusCodes.Status400BadRequest, arabicMessage ?? ErrorMessages.ValidationError);

@@ -32,6 +32,9 @@ public static class ErrorCodes
     /// <summary>409 — registering a phone number that already identifies a customer.</summary>
     public const string PhoneAlreadyExists = "PHONE_ALREADY_EXISTS";
 
+    /// <summary>404 — no employee with that id.</summary>
+    public const string EmployeeNotFound = "EMPLOYEE_NOT_FOUND";
+
     /// <summary>401 — no token, or a token the JWT middleware rejected.</summary>
     public const string Unauthorized = "UNAUTHORIZED";
 

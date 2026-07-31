@@ -31,6 +31,9 @@ public static class ErrorMessages
     /// <summary>For <see cref="ErrorCodes.PhoneAlreadyExists"/>.</summary>
     public const string PhoneAlreadyExists = "رقم الهاتف مسجّل مسبقاً";
 
+    /// <summary>For <see cref="ErrorCodes.EmployeeNotFound"/>.</summary>
+    public const string EmployeeNotFound = "الموظف غير موجود";
+
     /// <summary>For <see cref="ErrorCodes.Unauthorized"/>.</summary>
     public const string Unauthorized = "يجب تسجيل الدخول للمتابعة";
 

@@ -30,4 +30,36 @@ public static class RoleNames
         EmployeeRole.Cashier => Cashier,
         _ => throw new ArgumentOutOfRangeException(nameof(role), role, "Unmapped employee role.")
     };
+
+    /// <summary>
+    /// The inverse of <see cref="ToWireString"/>: a wire string back to the stored enum.
+    /// </summary>
+    /// <param name="role">The role as it arrived in the request body.</param>
+    /// <param name="parsed">The matching <see cref="EmployeeRole"/>, or <c>default</c> when there is none.</param>
+    /// <returns><c>true</c> when the string is one of the two roles.</returns>
+    /// <remarks>
+    /// Written by hand rather than delegated to <see cref="Enum.TryParse{TEnum}(string, bool, out TEnum)"/>
+    /// or to the JSON enum converter, because the wire form is lowercase and the enum
+    /// members are not: the two vocabularies happen to differ only in case today, and
+    /// nothing should let a renamed member silently redefine what clients may send.
+    /// Matching is case-insensitive, so <c>"Cashier"</c> is accepted as well —
+    /// rejecting a client over capitalization buys nothing.
+    /// </remarks>
+    public static bool TryParseWireString(string? role, out EmployeeRole parsed)
+    {
+        if (string.Equals(role, Admin, StringComparison.OrdinalIgnoreCase))
+        {
+            parsed = EmployeeRole.Admin;
+            return true;
+        }
+
+        if (string.Equals(role, Cashier, StringComparison.OrdinalIgnoreCase))
+        {
+            parsed = EmployeeRole.Cashier;
+            return true;
+        }
+
+        parsed = default;
+        return false;
+    }
 }

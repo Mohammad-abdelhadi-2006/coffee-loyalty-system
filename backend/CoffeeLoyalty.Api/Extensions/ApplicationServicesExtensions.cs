@@ -23,6 +23,7 @@ public static class ApplicationServicesExtensions
     {
         services.AddScoped<IProductService, ProductService>();
         services.AddScoped<ICustomerService, CustomerService>();
+        services.AddScoped<IEmployeeService, EmployeeService>();
 
         return services;
     }
