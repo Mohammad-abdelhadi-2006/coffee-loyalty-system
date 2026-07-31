@@ -22,6 +22,7 @@ public static class ApplicationServicesExtensions
     public static IServiceCollection AddCoffeeLoyaltyServices(this IServiceCollection services)
     {
         services.AddScoped<IProductService, ProductService>();
+        services.AddScoped<ICustomerService, CustomerService>();
 
         return services;
     }

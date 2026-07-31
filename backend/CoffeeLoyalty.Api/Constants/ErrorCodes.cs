@@ -26,6 +26,12 @@ public static class ErrorCodes
     /// <summary>404 — no active product with that id (a soft-deleted product is gone as far as the API is concerned).</summary>
     public const string ProductNotFound = "PRODUCT_NOT_FOUND";
 
+    /// <summary>404 — no customer with that id or normalized phone number.</summary>
+    public const string CustomerNotFound = "CUSTOMER_NOT_FOUND";
+
+    /// <summary>409 — registering a phone number that already identifies a customer.</summary>
+    public const string PhoneAlreadyExists = "PHONE_ALREADY_EXISTS";
+
     /// <summary>401 — no token, or a token the JWT middleware rejected.</summary>
     public const string Unauthorized = "UNAUTHORIZED";
 

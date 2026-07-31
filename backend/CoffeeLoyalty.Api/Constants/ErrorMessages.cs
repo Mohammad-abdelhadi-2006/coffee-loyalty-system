@@ -25,6 +25,12 @@ public static class ErrorMessages
     /// <summary>For <see cref="ErrorCodes.ProductNotFound"/>.</summary>
     public const string ProductNotFound = "المنتج غير موجود";
 
+    /// <summary>For <see cref="ErrorCodes.CustomerNotFound"/>.</summary>
+    public const string CustomerNotFound = "العميل غير موجود";
+
+    /// <summary>For <see cref="ErrorCodes.PhoneAlreadyExists"/>.</summary>
+    public const string PhoneAlreadyExists = "رقم الهاتف مسجّل مسبقاً";
+
     /// <summary>For <see cref="ErrorCodes.Unauthorized"/>.</summary>
     public const string Unauthorized = "يجب تسجيل الدخول للمتابعة";
 
