@@ -23,6 +23,9 @@ public static class ErrorCodes
     /// <summary>400 — malformed request body (model validation).</summary>
     public const string ValidationError = "VALIDATION_ERROR";
 
+    /// <summary>404 — no active product with that id (a soft-deleted product is gone as far as the API is concerned).</summary>
+    public const string ProductNotFound = "PRODUCT_NOT_FOUND";
+
     /// <summary>401 — no token, or a token the JWT middleware rejected.</summary>
     public const string Unauthorized = "UNAUTHORIZED";
 

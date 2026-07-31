@@ -53,6 +53,10 @@ public class ApiException : Exception
     public static ApiException TooManyRequests() =>
         new(ErrorCodes.TooManyRequests, StatusCodes.Status429TooManyRequests, ErrorMessages.TooManyRequests);
 
+    /// <summary>404 — no active product carries that id (decision 14: soft-deleted products stay hidden).</summary>
+    public static ApiException ProductNotFound() =>
+        new(ErrorCodes.ProductNotFound, StatusCodes.Status404NotFound, ErrorMessages.ProductNotFound);
+
     /// <summary>400 — the request body failed validation.</summary>
     public static ApiException ValidationError(string? arabicMessage = null) =>
         new(ErrorCodes.ValidationError, StatusCodes.Status400BadRequest, arabicMessage ?? ErrorMessages.ValidationError);
