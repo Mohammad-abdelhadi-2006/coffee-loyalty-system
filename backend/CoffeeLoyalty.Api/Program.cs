@@ -1,3 +1,4 @@
+using System.Text.Json.Serialization;
 using CoffeeLoyalty.Api.Data;
 using CoffeeLoyalty.Api.Extensions;
 using CoffeeLoyalty.Api.Middleware;
@@ -14,10 +15,20 @@ builder.Services.AddDbContext<AppDbContext>(options =>
     options.UseSqlServer(builder.Configuration.GetConnectionString("DefaultConnection")));
 
 builder.Services.AddControllers()
+    .AddJsonOptions(options =>
+        // Enums travel as their member names ("Piece", "HotCoffee") per the contract, in
+        // both directions. An unrecognized name fails binding, which the unified
+        // validation errors below turn into VALIDATION_ERROR.
+        // EmployeeRole is deliberately not on the wire as an enum: its wire form is
+        // lowercase and is mapped by hand in the Employees module.
+        options.JsonSerializerOptions.Converters.Add(new JsonStringEnumConverter()))
     .UseUnifiedValidationErrors();
 
 // JWT bearer + the customer / cashier / admin policies + the auth services.
 builder.Services.AddCoffeeLoyaltyAuth(builder.Configuration);
+
+// The CRUD services behind the product / customer / employee modules.
+builder.Services.AddCoffeeLoyaltyServices();
 
 var app = builder.Build();
 

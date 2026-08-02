@@ -53,6 +53,22 @@ public class ApiException : Exception
     public static ApiException TooManyRequests() =>
         new(ErrorCodes.TooManyRequests, StatusCodes.Status429TooManyRequests, ErrorMessages.TooManyRequests);
 
+    /// <summary>404 — no active product carries that id (decision 14: soft-deleted products stay hidden).</summary>
+    public static ApiException ProductNotFound() =>
+        new(ErrorCodes.ProductNotFound, StatusCodes.Status404NotFound, ErrorMessages.ProductNotFound);
+
+    /// <summary>404 — no customer carries that id or phone number.</summary>
+    public static ApiException CustomerNotFound() =>
+        new(ErrorCodes.CustomerNotFound, StatusCodes.Status404NotFound, ErrorMessages.CustomerNotFound);
+
+    /// <summary>409 — that phone number already identifies a customer (the phone is the identity, decision 11).</summary>
+    public static ApiException PhoneAlreadyExists() =>
+        new(ErrorCodes.PhoneAlreadyExists, StatusCodes.Status409Conflict, ErrorMessages.PhoneAlreadyExists);
+
+    /// <summary>404 — no employee carries that id.</summary>
+    public static ApiException EmployeeNotFound() =>
+        new(ErrorCodes.EmployeeNotFound, StatusCodes.Status404NotFound, ErrorMessages.EmployeeNotFound);
+
     /// <summary>400 — the request body failed validation.</summary>
     public static ApiException ValidationError(string? arabicMessage = null) =>
         new(ErrorCodes.ValidationError, StatusCodes.Status400BadRequest, arabicMessage ?? ErrorMessages.ValidationError);

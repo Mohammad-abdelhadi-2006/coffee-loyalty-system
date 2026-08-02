@@ -43,6 +43,7 @@ Every non-2xx response has exactly this body:
 | `INVALID_PHONE` | 400 | Not a valid Jordanian number after E.164 normalization |
 | `PHONE_ALREADY_EXISTS` | 409 | Registering a phone that already exists |
 | `CUSTOMER_NOT_FOUND` | 404 | No customer with that id/phone |
+| `EMPLOYEE_NOT_FOUND` | 404 | No employee with that id |
 | `PRODUCT_NOT_FOUND` | 404 | No active product with that id |
 | `PRODUCT_UNAVAILABLE` | 400 | Product exists but `IsAvailable = false` |
 | `INVALID_QUANTITY` | 400 | Quantity ≤ 0, or a count for a `Piece` product isn't a whole number |
@@ -133,8 +134,11 @@ Create a cashier account (decision 4).
 ```json
 { "fullName": "أحمد", "username": "ahmad", "password": "...", "role": "cashier" }
 ```
+  `password` must be **at least 8 characters** (and at most 72 — BCrypt ignores
+  anything past that). `role` ∈ `cashier` | `admin`, lowercase.
 - **Success 201:** the created employee object (same shape as GET, no password).
-- **Errors:** `VALIDATION_ERROR` (username taken → `VALIDATION_ERROR` with a clear message)
+- **Errors:** `VALIDATION_ERROR` (username taken, password shorter than 8, or an
+  unknown role → `VALIDATION_ERROR` with a clear message)
 
 ### PATCH /api/employees/{id}/status
 Activate/deactivate an employee (decision 18). Never a physical delete.
@@ -145,7 +149,7 @@ Activate/deactivate an employee (decision 18). Never a physical delete.
 { "isActive": false }
 ```
 - **Success 200:** the updated employee object.
-- **Errors:** `VALIDATION_ERROR` (admin deactivating themselves is rejected)
+- **Errors:** `EMPLOYEE_NOT_FOUND`, `VALIDATION_ERROR` (admin deactivating themselves is rejected)
 
 ---
 
@@ -179,12 +183,16 @@ Activate/deactivate an employee (decision 18). Never a physical delete.
 ```
   `unitType` ∈ `Piece` | `Kg`.
   `category` ∈ `HotCoffee` | `ColdCoffee` | `Mojito` | `Milkshake` | `Desserts` | `CoffeeBeans`.
+  `price` must be **> 0**, with **at most 3 decimal places**, and at most
+  `999999999999999.999` — the capacity of the `decimal(18,3)` column it is stored in.
+  A finer or larger price is rejected rather than silently rounded or overflowed.
 - **Success 201:** the created product object.
 - **Errors:** `VALIDATION_ERROR`
 
 ### PUT /api/products/{id}
 - **Auth:** admin
-- **Request:** same shape as POST. Price changes never touch old orders (decision 3).
+- **Request:** same shape as POST, with the same `price` rules. Price changes never
+  touch old orders (decision 3).
 - **Success 200:** the updated product object.
 - **Errors:** `PRODUCT_NOT_FOUND`, `VALIDATION_ERROR`
 

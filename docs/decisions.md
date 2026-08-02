@@ -437,3 +437,133 @@
   - **An unverifiable Firebase token is not throttled**, because it carries no identifier
     to count against. Not a real gap: the token is RS256-signed by Google, so it must be
     forged rather than guessed.
+
+## 28. Unique-Constraint Races: Confirm, Then Translate
+- **Decision:** Inserts guarded by a unique index (customer phone number, employee
+  username) keep their up-front duplicate check, but also catch `DbUpdateException` on
+  `SaveChangesAsync`. The handler detaches the failed entity, **re-queries for the
+  conflicting row, and only translates the failure into the duplicate error**
+  (`PHONE_ALREADY_EXISTS` / the username-taken `VALIDATION_ERROR`) once that row is
+  confirmed to exist. If it does not, the original exception is re-thrown and becomes a
+  500. Mirrors the race handling already in `AuthService.FindOrCreateCustomerAsync`.
+- **Rejected alternative:** Trusting the pre-check alone / translating every
+  `DbUpdateException` on these paths into the duplicate error without confirming.
+- **Why:** The pre-check is not a lock — two cashiers registering the same number at once
+  both pass it, and the index rejects the loser, who would otherwise get a 500 for a
+  perfectly ordinary conflict. But translating blindly is worse than the bug it fixes: a
+  connection failure, a check-constraint violation or a truncation error would all be
+  reported to the client as "this phone is already registered", hiding a real defect behind
+  a plausible message. Confirming the row costs one keyed read on a path that has already
+  failed.
+
+## 29. Absent vs. Invalid in Request DTOs
+- **Decision:** Every request field whose type has a usable default — enums and `bool` —
+  is declared **nullable and `[Required]`** (`UnitType?`, `ProductCategory?`, `IsAvailable`,
+  `IsActive`). An omitted field is therefore a `VALIDATION_ERROR`, and the service reads
+  `.Value` knowing model validation has already run.
+- **Rejected alternative:** Non-nullable properties, letting the binder fill in the
+  default.
+- **Why:** A non-nullable field has no "absent" state. An omitted `category` would bind to
+  member 0 (`HotCoffee`) and be saved as if the admin had chosen it; an omitted
+  `isAvailable` would bind to `false` and quietly take a product off the menu nobody asked
+  to change. The client's mistake must not become the server's silent decision.
+
+## 30. Enum Wire Formats: Converter for Products, Explicit Mapping for Roles
+- **Decision:** A global `JsonStringEnumConverter` is registered in `AddControllers`, so
+  `UnitType` and `ProductCategory` travel as their **member names** (`"Piece"`,
+  `"HotCoffee"`) in both directions — the same strings `HasConversion<string>()` stores.
+  `EmployeeRole` is deliberately excluded: it is typed as a `string` on both the request
+  and the response DTO and mapped by hand through `RoleNames.ToWireString` /
+  `RoleNames.TryParseWireString` (case-insensitive; unknown ⇒ `VALIDATION_ERROR`).
+- **Rejected alternative:** Letting the converter handle `EmployeeRole` too, with a
+  camelCase/lowercase naming policy / mapping the product enums by hand as well.
+- **Why:** The role's wire vocabulary is the lowercase one from Decision 25's JWT claim
+  (`"cashier"`), which does not match the enum member names, and it is the vocabulary the
+  authorization policies are built from. A naming policy would make that contract a
+  side-effect of member spelling: renaming `EmployeeRole.Cashier` would silently change
+  what clients are allowed to send *and* what the `role` claim says. The product enums have
+  no such second vocabulary — name, stored value and wire value are one string — so the
+  converter is exactly right for them and hand-mapping would be noise.
+
+## 31. Product Price Validated Against the Column, Not by It
+- **Decision:** `price` is validated before it reaches SQL Server: `Range` enforces
+  `> 0` and an upper bound of `999999999999999.999`, and the service rejects any value with
+  more than 3 decimal places. Both failures are `VALIDATION_ERROR`. Documented in the
+  contract's §3.
+- **Rejected alternative:** Letting `decimal(18,3)` take whatever arrives.
+- **Why:** The column silently **rounds** a fourth decimal and **overflows** on an
+  oversized value. Rounding means the admin is shown a price the shop is not charging —
+  a wrong number nobody is told about, which then gets snapshotted into orders
+  (Decision 3) and is unrecoverable. Overflow means an unhandled 500 instead of the
+  contract's error body. Neither is something to discover in production; both are one
+  attribute and one comparison to prevent.
+
+## 32. Soft-Deleted Products Are Unaddressable
+- **Decision:** Every product write route (`PUT`, `DELETE`, `PATCH .../availability`)
+  loads the row with `IsActive == true` and otherwise raises `PRODUCT_NOT_FOUND` — the
+  registry's wording, "no *active* product with that id". A soft-deleted product is
+  therefore invisible to the whole API, and **there is no way to bring one back through
+  it**.
+- **Rejected alternative:** Letting `PUT` operate on inactive rows / adding a reactivate
+  route on the spot.
+- **Why:** Decision 14 made `IsActive` the permanent, admin-level removal; a product that
+  can be silently edited or resurrected through the ordinary edit form is not permanent
+  removal, it is a second availability flag. The contract defines no reactivate route, so
+  inventing one here would put a shape in the API that no client was promised. If the shop
+  needs it, it is an additive endpoint and a decision of its own — the data is still there.
+
+## 33. Multi-Role Endpoints Use a Role List, Not a New Policy
+- **Decision:** `GET /api/products` is the one endpoint open to all three roles at once.
+  It is authorized with `[Authorize(Roles = ...)]` built from the same `RoleNames`
+  constants, rather than by registering a fourth policy. Every single-level endpoint keeps
+  `[Authorize(Policy = RoleNames.Xxx)]`.
+- **Rejected alternative:** Stacking the three existing policy attributes / adding an
+  `anyRole` policy to `AuthSetupExtensions` / a bare `[Authorize]`.
+- **Why:** Stacked policies combine with **AND**, so the three attributes together admit
+  nobody — a trap worth stating out loud. A fourth policy would mean editing the
+  authorization setup, which is reviewed security code, to express a rule used exactly
+  once. A bare `[Authorize]` would admit any authenticated principal, including whatever
+  role is added next; listing the roles means a future one has to be let in on purpose.
+
+## 34. Employee Password: 8-Character Minimum
+- **Decision:** `POST /api/employees` requires a password of **at least 8 characters**
+  (upper bound 72, BCrypt's own limit — see the DTO). Shorter ⇒ `VALIDATION_ERROR`.
+  Documented in the contract's §2. No complexity rules, no expiry, no reuse check.
+- **Rejected alternative:** No minimum at all / a full complexity policy (classes,
+  rotation, history).
+- **Why:** These accounts are the dashboard's only door and the admin sets the initial
+  password for someone else, so "1" must not be a valid choice. A minimum length is the
+  one control that actually raises the guessing cost; complexity rules and forced rotation
+  mostly produce written-down passwords and are not worth the friction at this scale.
+  Note that Decision 27's throttle protects the *login*, not the password's quality —
+  they are complementary, not substitutes.
+
+## 35. Missing Employee: 404 `EMPLOYEE_NOT_FOUND`
+- **Decision:** `PATCH /api/employees/{id}/status` against an unknown id returns
+  **404 `EMPLOYEE_NOT_FOUND`**, added to the registry alongside `PRODUCT_NOT_FOUND` and
+  `CUSTOMER_NOT_FOUND`. The self-deactivation refusal stays a 400 `VALIDATION_ERROR`.
+- **Supersedes:** the initial implementation, which reported a missing employee as
+  `VALIDATION_ERROR` with an Arabic message, because the registry had no code for it.
+- **Rejected alternative:** Keeping the 400 stopgap / reusing `VALIDATION_ERROR` for both
+  failures.
+- **Why:** The stopgap made the same class of failure — "the id you named does not
+  exist" — carry a different status and code depending on which entity was named, so a
+  dashboard could not handle not-found once. Adding a code to the registry is an additive
+  change no existing client breaks on. The two failures stay distinct because they are
+  distinct: a missing id is a bad reference, self-deactivation is a well-formed request
+  the rules forbid.
+
+## 36. Identifiers Are Stored Trimmed, Not Case-Folded
+- **Decision:** `Username` and every display name are `Trim()`-ed before insert; case is
+  left exactly as typed. Uniqueness and login lookups rely on the column's
+  case-insensitive collation. Phone numbers are the exception — they are rewritten to
+  canonical E.164 by `JordanPhoneNumber` (Decision 11), because their spelling is genuinely
+  ambiguous. `[Required]` accepts `" "`, so a whitespace-only name is rejected explicitly
+  after trimming.
+- **Rejected alternative:** Lower-casing usernames on write / storing them exactly as
+  typed with no trim.
+- **Why:** The collation already prevents `ahmad` and `Ahmad` from both existing, and
+  `AuthService` compares the same way, so folding the case adds no safety — it only makes
+  the stored name differ from what the admin typed and saw. Trimming is a different matter:
+  a trailing space is invisible, would create a second account indistinguishable from the
+  first on screen, and would then fail every login the admin is sure they typed correctly.
