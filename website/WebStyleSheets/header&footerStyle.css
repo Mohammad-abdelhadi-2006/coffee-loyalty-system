@@ -48,6 +48,7 @@ nav a {
 nav li {
     padding: 10px;
     text-align: center;
+    
 }
 
 
@@ -55,7 +56,6 @@ nav li {
 footer {
     background: #2C1E16;
     border-top: 1px solid #4A3525;
-    /* تعديل الترتيب الصحيح */
     padding: 20px;
     width: 100%;
     height: 100px;
