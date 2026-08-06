@@ -34,6 +34,51 @@ public static class ErrorMessages
     /// <summary>For <see cref="ErrorCodes.EmployeeNotFound"/>.</summary>
     public const string EmployeeNotFound = "الموظف غير موجود";
 
+    /// <summary>For <see cref="ErrorCodes.OrderNotFound"/>.</summary>
+    public const string OrderNotFound = "الطلب غير موجود";
+
+    /// <summary>For <see cref="ErrorCodes.OrderAlreadyCancelled"/>.</summary>
+    public const string OrderAlreadyCancelled = "هذا الطلب ملغى مسبقاً";
+
+    /// <summary>For <see cref="ErrorCodes.OrderHasReturns"/>.</summary>
+    public const string OrderHasReturns = "لا يمكن إلغاء طلب تم إرجاع جزء منه";
+
+    /// <summary>For <see cref="ErrorCodes.ReturnWindowExpired"/>.</summary>
+    public const string ReturnWindowExpired = "انتهت مدة الإرجاع المسموح بها";
+
+    /// <summary>For <see cref="ErrorCodes.InsufficientBalanceForReturn"/>.</summary>
+    public const string InsufficientBalanceForReturn = "رصيد النقاط لا يغطي النقاط المستحقة للاسترجاع";
+
+    /// <summary>For <see cref="ErrorCodes.OrderPaidWithPoints"/>.</summary>
+    public const string OrderPaidWithPoints = "الطلبات المدفوعة بالنقاط تُلغى بالكامل ولا تقبل الإرجاع الجزئي";
+
+    /// <summary>For <see cref="ErrorCodes.ItemNotInOrder"/>.</summary>
+    public const string ItemNotInOrder = "هذا الصنف لا ينتمي إلى هذا الطلب";
+
+    /// <summary>For <see cref="ErrorCodes.ReturnExceedsQuantity"/>.</summary>
+    public const string ReturnExceedsQuantity = "الكمية المرتجعة تتجاوز الكمية المتبقية";
+
+    /// <summary>For <see cref="ErrorCodes.ProductUnavailable"/>.</summary>
+    public const string ProductUnavailable = "المنتج غير متوفر حالياً";
+
+    /// <summary>For <see cref="ErrorCodes.InvalidQuantity"/>.</summary>
+    public const string InvalidQuantity = "الكمية غير صالحة";
+
+    /// <summary>
+    /// For <see cref="ErrorCodes.RedeemBelowMinimum"/>. The one message that is
+    /// <c>static readonly</c> rather than <c>const</c>: it quotes the minimum, and the
+    /// minimum belongs to <see cref="LoyaltyConstants"/>. An interpolated string is not a
+    /// compile-time constant, and duplicating the number here would let the two drift.
+    /// </summary>
+    public static readonly string RedeemBelowMinimum =
+        $"الحد الأدنى للاستبدال {LoyaltyConstants.MinRedeemPoints} نقطة";
+
+    /// <summary>For <see cref="ErrorCodes.InsufficientBalance"/>.</summary>
+    public const string InsufficientBalance = "رصيد النقاط غير كافٍ";
+
+    /// <summary>For <see cref="ErrorCodes.RedeemExceedsTotal"/>.</summary>
+    public const string RedeemExceedsTotal = "النقاط المستبدلة تتجاوز قيمة الطلب";
+
     /// <summary>For <see cref="ErrorCodes.Unauthorized"/>.</summary>
     public const string Unauthorized = "يجب تسجيل الدخول للمتابعة";
 

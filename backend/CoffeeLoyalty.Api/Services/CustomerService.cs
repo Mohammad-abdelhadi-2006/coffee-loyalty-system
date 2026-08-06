@@ -117,6 +117,33 @@ public sealed class CustomerService : ICustomerService
         return profile ?? throw ApiException.CustomerNotFound();
     }
 
+    /// <inheritdoc />
+    public async Task<IReadOnlyList<PointsTransactionResponse>> GetTransactionsAsync(
+        int customerId,
+        int limit,
+        CancellationToken cancellationToken = default)
+    {
+        // No existence check, unlike the cashier's routes: the id comes from the caller's own
+        // validated token, so "no rows" here means an empty ledger and never a bad id. A new
+        // customer with no movements yet gets [], which is the honest answer.
+        return await _db.PointsTransactions
+            .AsNoTracking()
+            .Where(pt => pt.CustomerId == customerId)
+            // Newest first by id — insertion order, and unlike CreatedAt it cannot tie
+            // between the Redeem and the Earn written for the same order.
+            .OrderByDescending(pt => pt.Id)
+            .Take(limit)
+            .Select(pt => new PointsTransactionResponse
+            {
+                Id = pt.Id,
+                Type = pt.Type,
+                Amount = pt.Amount,
+                OrderId = pt.OrderId,
+                CreatedAt = pt.CreatedAt
+            })
+            .ToListAsync(cancellationToken);
+    }
+
     /// <summary>
     /// Trims the name and refuses one that is nothing but whitespace —
     /// <see cref="System.ComponentModel.DataAnnotations.RequiredAttribute"/> accepts <c>" "</c>.

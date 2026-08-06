@@ -35,6 +35,45 @@ public static class ErrorCodes
     /// <summary>404 — no employee with that id.</summary>
     public const string EmployeeNotFound = "EMPLOYEE_NOT_FOUND";
 
+    /// <summary>404 — no order with that id.</summary>
+    public const string OrderNotFound = "ORDER_NOT_FOUND";
+
+    /// <summary>400 — cancelling or returning against an already-cancelled order.</summary>
+    public const string OrderAlreadyCancelled = "ORDER_ALREADY_CANCELLED";
+
+    /// <summary>400 — full cancellation attempted after a partial return happened (decision 20).</summary>
+    public const string OrderHasReturns = "ORDER_HAS_RETURNS";
+
+    /// <summary>400 — past the end of the day following the order, Jordan time (decision 16).</summary>
+    public const string ReturnWindowExpired = "RETURN_WINDOW_EXPIRED";
+
+    /// <summary>400 — the claw-back would push the customer's balance below zero (decision 8).</summary>
+    public const string InsufficientBalanceForReturn = "INSUFFICIENT_BALANCE_FOR_RETURN";
+
+    /// <summary>400 — partial return on an order that was paid with points (decision 19).</summary>
+    public const string OrderPaidWithPoints = "ORDER_PAID_WITH_POINTS";
+
+    /// <summary>400 — the <c>orderItemId</c> does not belong to the order in the route.</summary>
+    public const string ItemNotInOrder = "ITEM_NOT_IN_ORDER";
+
+    /// <summary>400 — returning more than the line has left (<c>Quantity − ReturnedQuantity</c>).</summary>
+    public const string ReturnExceedsQuantity = "RETURN_EXCEEDS_QUANTITY";
+
+    /// <summary>400 — the product exists but the counter has it switched off (<c>IsAvailable = false</c>).</summary>
+    public const string ProductUnavailable = "PRODUCT_UNAVAILABLE";
+
+    /// <summary>400 — quantity ≤ 0, finer than the column's three decimals, or fractional for a <c>Piece</c> product.</summary>
+    public const string InvalidQuantity = "INVALID_QUANTITY";
+
+    /// <summary>400 — <c>0 &lt; pointsRedeemed &lt; MinRedeemPoints</c> (decision 9).</summary>
+    public const string RedeemBelowMinimum = "REDEEM_BELOW_MINIMUM";
+
+    /// <summary>400 — the customer's balance does not cover the points being spent.</summary>
+    public const string InsufficientBalance = "INSUFFICIENT_BALANCE";
+
+    /// <summary>400 — the redeemed points are worth more than the order (cash paid would go negative).</summary>
+    public const string RedeemExceedsTotal = "REDEEM_EXCEEDS_TOTAL";
+
     /// <summary>401 — no token, or a token the JWT middleware rejected.</summary>
     public const string Unauthorized = "UNAUTHORIZED";
 

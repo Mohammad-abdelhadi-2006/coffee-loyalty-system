@@ -76,12 +76,20 @@
   if it occurs in practice.
 
 ## 9. Points Formula: Earning & Redemption
+> **Partly superseded by Decision 37** — the earning rate is now 3 points per dinar.
+> Everything else below (redemption rate, minimum, earning on cash paid) still stands.
+> The original text is kept unedited on purpose.
+
 - **Decision:** Earning: 5 points per dinar paid in cash, rounded down (floor). Redemption: every 100 points = 1 JOD. Minimum per redemption = 250 points; any amount at or above that is allowed. Points are earned on the cash paid after the points discount — not on the full invoice.
 - **Rejected alternative:** Earning on the full invoice / redemption with no minimum.
 - **Why:** Earning points from points is a losing loop. The minimum prevents trivial redemptions that complicate the cashier's work. (Shop owner's decision.)
 - **Documented note:** The 250-point minimum effectively makes redemption impossible on orders under 2.5 JOD. The shop owner is aware of this and chose it deliberately (encourages larger orders). Not a bug.
 
 ## 10. Order Number Semantics
+> **Partly superseded by Decision 38** — `PointsTransaction.OrderId` is now nullable for
+> the `OpeningBalance` type. Everything else below still stands.
+> The original text is kept unedited on purpose.
+
 - **Decision:** `Order.Total` = the full order value **at creation time**
   and always equals the sum of its lines as originally ordered
   (Σ Quantity × UnitPriceSnapshot). It is never recalculated afterwards —
@@ -567,3 +575,49 @@
   the stored name differ from what the admin typed and saw. Trimming is a different matter:
   a trailing space is invisible, would create a second account indistinguishable from the
   first on screen, and would then fail every login the admin is sure they typed correctly.
+
+## 37. Earning Rate Lowered: 5 → 3 Points per Dinar
+- **Decision:** Earning is **3 points per dinar of cash paid**, floored. `LoyaltyConstants.PointsPerDinar`
+  goes from `5` to `3` and stays the single place the rate is written. Nothing else about the
+  formula changes: redemption is still 100 points = 1 JOD with a 250-point minimum, and points
+  are still earned on cash paid (Total − PointsRedeemed/100), never on the full invoice.
+- **Supersedes:** the rate in Decision 9, which stays on record with its original text.
+- **Rejected alternative:** Keeping 5 and reducing the redemption value instead / making the rate
+  an admin-editable setting.
+- **Why:** Shop owner's request — at 5 points per dinar the outstanding points liability grew
+  faster than they were willing to carry. Lowering the earning rate is the change customers feel
+  least: it slows accrual but never devalues points already earned, whereas moving the redemption
+  rate would retroactively shrink every existing balance. It stays a compile-time constant rather
+  than a setting because a rate that changes mid-day makes two orders in the same shift
+  irreproducible, and past orders are not recalculated in any case (Decision 22).
+- **Documented note:** Orders created before this change keep the points they earned at 5/dinar.
+  `PointsEarned` is an immutable snapshot, so returns and cancellations on those orders claw back
+  against their own recorded value — old and new orders can be reconciled side by side.
+
+## 38. Nullable `PointsTransaction.OrderId` for Opening Balances
+- **Decision:** `PointsTransaction.OrderId` becomes `int?`, and a new `OpeningBalance` transaction
+  type is the **only** type allowed to leave it NULL. The rule is enforced in the database, not
+  just in code, by the check constraint
+  `CK_PointsTransaction_Order`: `[Type] = 'OpeningBalance' OR [OrderId] IS NOT NULL`.
+- **Supersedes:** Decision 10's "OrderId NOT NULL — no exceptions", which stays on record with its
+  original text, and its explicit rejection of a nullable OrderId.
+- **Rejected alternative:** Keeping OrderId NOT NULL and inventing a synthetic zero-total "migration
+  order" per customer to hang the opening balance on / seeding balances by writing
+  `Customer.PointsBalance` directly with no transaction row.
+- **Why:** Shop owner wants the balances from the old paper punch-cards imported so customers do not
+  start from zero. Decision 10 rejected a nullable OrderId to block *manual adjustments* — a staff
+  member granting arbitrary points. That reasoning is untouched: `OpeningBalance` is a one-time,
+  admin-only, idempotent import behind an off-by-default flag, not a general adjustment facility,
+  and the check constraint means no other type can ever slip through the same hole. Fake migration
+  orders would have polluted every sales report with rows that were never sales; writing the balance
+  column directly would have broken the system's core invariant
+  (`PointsBalance == SUM(PointsTransaction.Amount)`) on day one.
+- **Consequence for the unique index:** `UX_PointsTransaction_Order_Type` is refiltered to
+  `[Type] <> 'Refund' AND [OrderId] IS NOT NULL`. SQL Server treats NULLs as equal in a unique
+  index, so without the second clause only one customer in the whole system could ever hold an
+  opening balance.
+- **TODO (build with the Phase 6 import, not before):** add a filtered unique index
+  `UX_PointsTransaction_Customer_OpeningBalance` on `CustomerId` with filter
+  `[Type] = 'OpeningBalance'`, so the database itself refuses a second opening balance for a
+  customer even if two concurrent import runs both pass the app-level "already imported?" check.
+  The app-level check is a TOCTOU race; the index is the real guarantee.

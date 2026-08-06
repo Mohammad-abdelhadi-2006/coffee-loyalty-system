@@ -27,7 +27,7 @@ builder.Services.AddControllers()
 // JWT bearer + the customer / cashier / admin policies + the auth services.
 builder.Services.AddCoffeeLoyaltyAuth(builder.Configuration);
 
-// The CRUD services behind the product / customer / employee modules.
+// The services behind the product / customer / employee / order modules.
 builder.Services.AddCoffeeLoyaltyServices();
 
 var app = builder.Build();

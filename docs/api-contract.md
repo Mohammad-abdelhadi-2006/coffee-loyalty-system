@@ -254,7 +254,7 @@ The customer's recent orders — feeds the returns screen.
     "status": "Completed",
     "total": 6.00,
     "pointsRedeemed": 250,
-    "pointsEarned": 17,
+    "pointsEarned": 10,
     "items": [
       {
         "orderItemId": 101,
@@ -283,11 +283,12 @@ The customer's recent orders — feeds the returns screen.
 - **Success 200:**
 ```json
 [
-  { "id": 88, "type": "Earn", "amount": 17, "orderId": 45, "createdAt": "..." },
+  { "id": 88, "type": "Earn", "amount": 10, "orderId": 45, "createdAt": "..." },
   { "id": 87, "type": "Redeem", "amount": -250, "orderId": 45, "createdAt": "..." }
 ]
 ```
-  `type` ∈ `Earn` | `Redeem` | `Refund` | `RedeemReversal`. Sign is the balance effect (ERD rule).
+  `type` ∈ `Earn` | `Redeem` | `Refund` | `RedeemReversal` | `OpeningBalance`. Sign is the balance effect (ERD rule).
+  `orderId` is `null` only on `OpeningBalance` (decision 38).
 
 ---
 
@@ -317,10 +318,12 @@ catalog, snapshots prices, computes everything (formulas in ERD).
   "total": 6.00,
   "cashPaid": 3.50,
   "pointsRedeemed": 250,
-  "pointsEarned": 17,
-  "newBalance": 107
+  "pointsEarned": 10,
+  "newBalance": 100
 }
 ```
+  Worked example above: `cashPaid` = 6.00 − 250/100 = 3.50 →
+  `pointsEarned` = floor(3.50 × 3) = **10** (decision 37). Balance 340 → 340 − 250 + 10 = 100.
 - **Errors:** `CUSTOMER_NOT_FOUND`, `PRODUCT_NOT_FOUND`, `PRODUCT_UNAVAILABLE`,
   `INVALID_QUANTITY`, `REDEEM_BELOW_MINIMUM`, `INSUFFICIENT_BALANCE`, `REDEEM_EXCEEDS_TOTAL`
 
@@ -339,7 +342,7 @@ exists (ERD rule) or outside the window (decision 16).
 - **Request:** empty body.
 - **Success 200:**
 ```json
-{ "pointsClawedBack": 17, "pointsRestored": 250, "newBalance": 340 }
+{ "pointsClawedBack": 10, "pointsRestored": 250, "newBalance": 340 }
 ```
 - **Errors:** `ORDER_NOT_FOUND`, `ORDER_ALREADY_CANCELLED`, `ORDER_HAS_RETURNS`,
   `RETURN_WINDOW_EXPIRED`, `INSUFFICIENT_BALANCE_FOR_RETURN`
@@ -355,7 +358,7 @@ orders paid with points can only be fully cancelled.
 ```
 - **Success 200:**
 ```json
-{ "refundAmount": 1.25, "pointsClawedBack": 6, "newBalance": 334 }
+{ "refundAmount": 1.25, "pointsClawedBack": 3, "newBalance": 337 }
 ```
 - **Claw-back formula (cumulative, drift-free):**
   ```
@@ -365,6 +368,9 @@ orders paid with points can only be fully cancelled.
   ```
   Guarantees: the sum of claw-backs never exceeds `PointsEarned`, and returning
   the whole order line-by-line claws back exactly `PointsEarned`.
+  Worked example above: `Total` = 6.00 with `PointsRedeemed` = 0 → `PointsEarned` =
+  floor(6.00 × 3) = 18. Returning 0.5 × 2.50 → `returnedValueSoFar` = 1.25 →
+  `targetClawBack` = floor(18 × 1.25 / 6.00) = floor(3.75) = **3**, none clawed back yet.
 - **Errors:** `ORDER_NOT_FOUND`, `ORDER_ALREADY_CANCELLED`, `ORDER_PAID_WITH_POINTS`,
   `ITEM_NOT_IN_ORDER`, `RETURN_EXCEEDS_QUANTITY`, `RETURN_WINDOW_EXPIRED`,
   `INSUFFICIENT_BALANCE_FOR_RETURN`
@@ -383,7 +389,7 @@ Shape agreed now so the dashboard home screen can be designed; **endpoint built 
   "ordersCount": 210,
   "totalSales": 940.50,
   "totalCashPaid": 895.25,
-  "pointsEarned": 4476,
+  "pointsEarned": 2685,
   "pointsRedeemed": 4525,
   "outstandingPointsLiability": 12840
 }

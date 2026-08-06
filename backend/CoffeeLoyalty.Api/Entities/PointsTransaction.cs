@@ -8,8 +8,9 @@ public class PointsTransaction
 
     public int CustomerId { get; set; }
 
-    /// <summary>NOT NULL: every points movement has a justifying order — no sourceless adjustments (decision 12).</summary>
-    public int OrderId { get; set; }
+    /// <summary>Required for every type except OpeningBalance: a points movement has a justifying order — no sourceless
+    /// adjustments (decision 12). Only the one-time legacy import leaves it NULL; enforced by CK_PointsTransaction_Order.</summary>
+    public int? OrderId { get; set; }
 
     /// <summary>Signed effect on the balance (positive = increase, negative = decrease); Type describes the reason, not the sign.</summary>
     public int Amount { get; set; }
@@ -22,5 +23,5 @@ public class PointsTransaction
 
     // Navigation
     public Customer Customer { get; set; } = null!;
-    public Order Order { get; set; } = null!;
+    public Order? Order { get; set; }
 }

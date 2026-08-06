@@ -46,4 +46,21 @@ public interface ICustomerService
     /// <returns>Name, phone number and balance — nothing internal.</returns>
     /// <exception cref="Common.ApiException">404 <c>CUSTOMER_NOT_FOUND</c> when the row behind the token is gone.</exception>
     Task<CustomerProfileResponse> GetProfileAsync(int customerId, CancellationToken cancellationToken = default);
+
+    /// <summary>
+    /// The signed-in customer's points ledger — every movement behind their balance.
+    /// </summary>
+    /// <param name="customerId">The id from the token's <c>sub</c> claim.</param>
+    /// <param name="limit">How many movements to return, newest first.</param>
+    /// <param name="cancellationToken">Cancellation token.</param>
+    /// <returns>Up to <paramref name="limit"/> movements, newest first.</returns>
+    /// <remarks>
+    /// A pure read of rows the orders module writes. It lives here because the route is the
+    /// customer's own account (<c>/api/customers/me/transactions</c>) and it applies no
+    /// points rule of its own — it only shows what the ledger already says.
+    /// </remarks>
+    Task<IReadOnlyList<PointsTransactionResponse>> GetTransactionsAsync(
+        int customerId,
+        int limit,
+        CancellationToken cancellationToken = default);
 }

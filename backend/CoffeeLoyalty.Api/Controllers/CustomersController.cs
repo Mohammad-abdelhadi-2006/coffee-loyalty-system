@@ -2,6 +2,7 @@ using System.ComponentModel.DataAnnotations;
 using CoffeeLoyalty.Api.Common;
 using CoffeeLoyalty.Api.Constants;
 using CoffeeLoyalty.Api.Dtos.Customers;
+using CoffeeLoyalty.Api.Dtos.Orders;
 using CoffeeLoyalty.Api.Extensions;
 using CoffeeLoyalty.Api.Services;
 using Microsoft.AspNetCore.Authorization;
@@ -14,8 +15,10 @@ namespace CoffeeLoyalty.Api.Controllers;
 /// <see cref="ICustomerService"/>.
 /// </summary>
 /// <remarks>
-/// The contract's <c>/{id}/orders</c> and <c>/me/transactions</c> routes are not here:
-/// they read order and points history, and are built with the orders module.
+/// Two of these routes read order and points history rather than the customer record, so
+/// the controller talks to <see cref="IOrderService"/> as well: the order list is an
+/// orders-module shape that happens to be addressed by customer, while the points ledger
+/// applies no rule of its own and stays with the customer's own account.
 /// </remarks>
 [ApiController]
 [Route("api/customers")]
@@ -23,14 +26,17 @@ namespace CoffeeLoyalty.Api.Controllers;
 public class CustomersController : ControllerBase
 {
     private readonly ICustomerService _customers;
+    private readonly IOrderService _orders;
 
     /// <summary>
     /// Creates the controller.
     /// </summary>
     /// <param name="customers">The customer service.</param>
-    public CustomersController(ICustomerService customers)
+    /// <param name="orders">The orders service, for the order-history route.</param>
+    public CustomersController(ICustomerService customers, IOrderService orders)
     {
         _customers = customers;
+        _orders = orders;
     }
 
     /// <summary>
@@ -116,5 +122,66 @@ public class CustomersController : ControllerBase
     {
         var profile = await _customers.GetProfileAsync(User.GetUserId(), cancellationToken);
         return Ok(profile);
+    }
+
+    /// <summary>
+    /// A customer's recent orders — the returns screen's list.
+    /// </summary>
+    /// <param name="id">The customer's id.</param>
+    /// <param name="limit">How many orders to return, newest first. Defaults to 10, capped at 50.</param>
+    /// <param name="cancellationToken">Cancellation token.</param>
+    /// <returns>The orders with their lines.</returns>
+    /// <remarks>
+    /// The cap is a <see cref="RangeAttribute"/> rather than a silent clamp: a client asking
+    /// for 500 has misunderstood the endpoint, and quietly handing back 50 would let it
+    /// believe it had seen the customer's whole history.
+    /// </remarks>
+    /// <response code="200">The orders; empty when the customer has never bought anything.</response>
+    /// <response code="400">VALIDATION_ERROR — limit outside 1..50.</response>
+    /// <response code="401">UNAUTHORIZED — missing or rejected token.</response>
+    /// <response code="403">FORBIDDEN — not a cashier or admin.</response>
+    /// <response code="404">CUSTOMER_NOT_FOUND.</response>
+    [HttpGet("{id:int}/orders")]
+    [Authorize(Policy = RoleNames.Cashier)]
+    [ProducesResponseType(typeof(IReadOnlyList<OrderResponse>), StatusCodes.Status200OK)]
+    [ProducesResponseType(typeof(ApiError), StatusCodes.Status400BadRequest)]
+    [ProducesResponseType(typeof(ApiError), StatusCodes.Status401Unauthorized)]
+    [ProducesResponseType(typeof(ApiError), StatusCodes.Status403Forbidden)]
+    [ProducesResponseType(typeof(ApiError), StatusCodes.Status404NotFound)]
+    public async Task<ActionResult<IReadOnlyList<OrderResponse>>> GetCustomerOrders(
+        int id,
+        [FromQuery][Range(1, 50)] int limit = 10,
+        CancellationToken cancellationToken = default)
+    {
+        var orders = await _orders.GetForCustomerAsync(id, limit, cancellationToken);
+        return Ok(orders);
+    }
+
+    /// <summary>
+    /// The signed-in customer's own points ledger.
+    /// </summary>
+    /// <param name="limit">How many movements to return, newest first. Defaults to 20, capped at 100.</param>
+    /// <param name="cancellationToken">Cancellation token.</param>
+    /// <returns>The movements behind the caller's balance.</returns>
+    /// <remarks>
+    /// Like <c>/me</c>, the id comes from the token's <c>sub</c> claim and from nowhere
+    /// else — there is no parameter here that could be pointed at another customer's ledger.
+    /// </remarks>
+    /// <response code="200">The ledger; empty for a customer with no movements yet.</response>
+    /// <response code="400">VALIDATION_ERROR — limit outside 1..100.</response>
+    /// <response code="401">UNAUTHORIZED — missing or rejected token.</response>
+    /// <response code="403">FORBIDDEN — not a customer token.</response>
+    [HttpGet("me/transactions")]
+    [Authorize(Policy = RoleNames.Customer)]
+    [ProducesResponseType(typeof(IReadOnlyList<PointsTransactionResponse>), StatusCodes.Status200OK)]
+    [ProducesResponseType(typeof(ApiError), StatusCodes.Status400BadRequest)]
+    [ProducesResponseType(typeof(ApiError), StatusCodes.Status401Unauthorized)]
+    [ProducesResponseType(typeof(ApiError), StatusCodes.Status403Forbidden)]
+    public async Task<ActionResult<IReadOnlyList<PointsTransactionResponse>>> GetMyTransactions(
+        [FromQuery][Range(1, 100)] int limit = 20,
+        CancellationToken cancellationToken = default)
+    {
+        var transactions = await _customers.GetTransactionsAsync(User.GetUserId(), limit, cancellationToken);
+        return Ok(transactions);
     }
 }
