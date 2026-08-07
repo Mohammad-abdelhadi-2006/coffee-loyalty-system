@@ -2,7 +2,7 @@ import { FaInstagram, FaFacebookF, FaTwitter } from 'react-icons/fa'
 function Header() {
   return (
     <header>
-      <span className="logo">نكهة فنجان</span>
+      <h1>نكهة فنجان</h1>
       <nav>
         <a href="#hero">الرئيسية</a>
         <a href="#menu">المنيو</a>

@@ -1,11 +1,11 @@
 import {Header , Footer} from './headerFooter.jsx'
-import Hero from './home.jsx'
+import Home from './Home.jsx'
 
 function App() {
   return (
     <>
       <Header />
-      <Hero />
+      <Home />
       <Footer />
     </>
   )
