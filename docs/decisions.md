@@ -709,3 +709,67 @@
   - **Over-long keys are rejected with `VALIDATION_ERROR`** rather than truncated, so two
     distinct keys sharing their first 64 characters can never collapse into one order. Same
     principle as decision 31: validate against the column, do not let the column decide.
+
+## 41. CORS: An Explicit Origin List, Supplied at Deploy Time
+- **Decision:** One named policy, `CoffeeLoyaltyDashboard`, registered by
+  `AddCoffeeLoyaltyCors(configuration)` in `Extensions/CorsSetupExtensions.cs` — the same
+  extension-method shape as `AddCoffeeLoyaltyAuth`. It reads `Cors:AllowedOrigins` (a string
+  array, bound through `CorsOptions`) and applies `.WithOrigins(...)`, `.AllowAnyHeader()`,
+  `.AllowAnyMethod()`. Applied in the pipeline **after `UseHttpsRedirection` and before
+  `UseAuthentication` / `UseAuthorization`**. Development origins (`http://localhost:5173`,
+  `http://localhost:3000`) live in `appsettings.Development.json`; production origins arrive as
+  `Cors__AllowedOrigins__0`, `…__1`, so the real POS origin is set at deploy without a code
+  change. An empty list **warns at startup and does not stop the app**.
+- **Rejected alternative:** `AllowAnyOrigin()` / hardcoding the dashboard's URL in `Program.cs` /
+  the default (unnamed) policy / failing fast on an empty list / putting `UseCors` after
+  `UseAuthentication`.
+- **Why:** The dashboard runs in a browser on the shop's POS machine and calls an API hosted on
+  MonsterASP.NET — a different origin — so without a server opt-in the browser blocks every
+  response and the dashboard is simply dead in production. `AllowAnyOrigin` would fix that by
+  letting *any* page on the internet script authenticated-looking calls against this API from a
+  victim's browser; the origin list is the only part of CORS that is actually a control, so
+  giving it away leaves the ceremony without the protection. Hardcoding was rejected because the
+  POS origin is not known at commit time and will change when the shop's hostname does — that is
+  a deploy input, not a source-code fact, and the same reasoning that keeps the connection string
+  and `Jwt:Secret` out of the repo applies to it (see `docs/DEPLOYMENT.md`).
+- **`AllowCredentials` is deliberately absent.** Authentication is a Bearer token in the
+  `Authorization` header (decision 15), never a cookie, so the browser has no credentials to
+  send and credential mode buys nothing. It would also forbid any future move to a wildcard
+  origin, and — more to the point — turning it on is what makes a CORS misconfiguration
+  exploitable rather than merely permissive.
+- **Why before `UseAuthentication`:** a preflight `OPTIONS` carries no `Authorization` header by
+  specification. Behind the authentication middleware it would be answered with the contract's
+  401, the browser would discard it as a failed preflight, and the dashboard would see every
+  request fail with a CORS message that names nothing useful. Placed before, preflights are
+  answered automatically with `204` and never reach a policy at all.
+- **Why a warning rather than a fail-fast** (unlike `Jwt:Secret`, decision 4 / `JwtOptions`): an
+  API serving only the Flutter app is a legitimate deployment — the app is not a browser, sends
+  no `Origin`, and is unaffected by any of this. Refusing to start would break a working setup to
+  complain about an unused feature. But a silent empty list is the worst of both: the failure
+  appears only in a browser console on someone else's machine, with nothing in the server log to
+  correlate it with. The warning names the key and shows the exact environment-variable form.
+- **Trailing slashes are trimmed, not rejected.** `https://pos.example.com/` is what gets copied
+  out of an address bar, reads as correct in a hosting panel, and matches nothing — the `Origin`
+  header never carries a trailing slash. Normalising it costs one line and removes the single
+  most likely way this setting is got wrong at 2 a.m.
+- **Consequence for error bodies (verified, not assumed):** `ApiError.WriteToAsync` calls
+  `Response.Clear()`, which wipes response headers. It does *not* strip the CORS headers, because
+  the middleware applies them from an `OnStarting` callback that fires after the clear — so a
+  401/400/500 still carries `Access-Control-Allow-Origin` and the dashboard can read the
+  `{ code, message }` body it branches on. Worth stating because the opposite would have made
+  every failure look like a network error to the dashboard.
+
+## 42. Deployment Configuration Lives in `docs/DEPLOYMENT.md`
+- **Decision:** The four configuration values that are deliberately **not** committed —
+  `ConnectionStrings__DefaultConnection`, `Jwt__Secret`, `Firebase__CredentialsPath`,
+  `Cors__AllowedOrigins__0` — plus the admin seed credentials and the mandatory
+  `dotnet ef database update`, are listed in order in `docs/DEPLOYMENT.md` as literal steps.
+- **Rejected alternative:** A committed `appsettings.Production.json` with the real values /
+  leaving the list in the README / auto-migrating on startup so the database step disappears.
+- **Why:** Every one of those values is absent from the repo on purpose, and three of the four
+  stop the application dead at startup when missing (`Jwt:Secret` and both seed keys throw;
+  a missing database makes `AdminSeeder` fail on the first query). The fourth fails silently in
+  someone else's browser. That is precisely the set that has to be written down somewhere other
+  than in the head of whoever configured it the first time. Auto-migrating on startup was
+  rejected for the usual reason — it runs schema changes with no review, no backup step and no
+  way to stop a bad one, on a database holding the shop's points liability.

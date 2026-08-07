@@ -22,6 +22,27 @@
 Token is sent as `Authorization: Bearer <jwt>`.
 Missing/invalid token → `401`. Valid token, wrong role → `403`.
 
+### Cross-origin requests (browsers only)
+
+The dashboard calls the API from a different origin, so the API returns CORS headers for
+origins on an explicit allow-list (decision 41). This concerns **browsers only** — the Flutter
+app sends no `Origin` and is unaffected.
+
+- Allowed origins are configuration, not code: `Cors:AllowedOrigins` locally,
+  `Cors__AllowedOrigins__0`, `…__1` in production (see `DEPLOYMENT.md`). The dashboard's origin
+  must be registered there **exactly as the browser sends it** — scheme + host + optional port,
+  no trailing slash and no path.
+- Any request header and any HTTP method are allowed; preflight `OPTIONS` is answered
+  automatically with `204` and never reaches an endpoint.
+- **Credentials are not enabled.** Send the JWT in the `Authorization` header, as above — do not
+  set `withCredentials` / `credentials: 'include'`, which the policy would refuse.
+- Error responses carry the CORS headers too, so a `4xx`/`5xx` body is readable and the
+  `{ code, message }` shape can be branched on as normal.
+- A request from an unlisted origin gets **no** `Access-Control-Allow-Origin` header. The server
+  still processes it and returns its normal response — it is the browser, not the API, that
+  blocks the caller from reading it. So this is not an authorization mechanism; the auth levels
+  above are.
+
 ### Unified error shape
 
 Every non-2xx response has exactly this body:

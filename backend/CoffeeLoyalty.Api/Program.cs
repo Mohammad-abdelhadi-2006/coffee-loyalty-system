@@ -30,6 +30,10 @@ builder.Services.AddCoffeeLoyaltyAuth(builder.Configuration);
 // The services behind the product / customer / employee / order modules.
 builder.Services.AddCoffeeLoyaltyServices();
 
+// The dashboard calls this API from another origin, so the browser needs an explicit
+// opt-in. Origins come from configuration, never from code (decision 41).
+builder.Services.AddCoffeeLoyaltyCors(builder.Configuration);
+
 var app = builder.Build();
 
 // First in the pipeline: nothing downstream may return a body that is not { code, message }.
@@ -44,6 +48,11 @@ if (app.Environment.IsDevelopment())
 
 app.UseHttpsRedirection();
 
+// Before authentication, and that ordering is the whole point: a preflight OPTIONS carries
+// no Authorization header, so an authenticated pipeline would answer it with a 401 the
+// browser never shows anyone — the dashboard would just see every request fail (decision 41).
+app.UseCors(CorsSetupExtensions.PolicyName);
+
 app.UseAuthentication();
 app.UseAuthorization();
 
@@ -54,6 +63,12 @@ app.MapControllers();
 FirebaseInitializer.Initialize(
     app.Configuration,
     app.Services.GetRequiredService<ILoggerFactory>().CreateLogger(nameof(FirebaseInitializer)));
+
+// Not fail-fast: an API serving only the Flutter app needs no origins at all, so this
+// reports what the policy allows and warns when that is nothing (decision 41).
+CorsSetupExtensions.WarnIfNoOriginsConfigured(
+    app.Configuration,
+    app.Services.GetRequiredService<ILoggerFactory>().CreateLogger(nameof(CorsSetupExtensions)));
 
 using (var scope = app.Services.CreateScope())
 {
