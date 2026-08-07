@@ -15,6 +15,11 @@ public interface IOrderService
     /// </summary>
     /// <param name="employeeId">The cashier ringing it up, from their token's <c>sub</c> claim.</param>
     /// <param name="request">The customer, the points to spend, and the basket.</param>
+    /// <param name="idempotencyKey">
+    /// The client's <c>Idempotency-Key</c> header, or null when it sent none. A key already
+    /// carried by an order makes this call a replay: it returns that order's receipt and rings
+    /// nothing up (decision 40). Without a key the call behaves exactly as it always has.
+    /// </param>
     /// <param name="cancellationToken">Cancellation token.</param>
     /// <returns>The receipt figures, including the customer's new balance.</returns>
     /// <remarks>
@@ -26,11 +31,13 @@ public interface IOrderService
     /// <exception cref="Common.ApiException">
     /// 404 <c>CUSTOMER_NOT_FOUND</c> / <c>PRODUCT_NOT_FOUND</c>;
     /// 400 <c>PRODUCT_UNAVAILABLE</c>, <c>INVALID_QUANTITY</c>, <c>REDEEM_BELOW_MINIMUM</c>,
-    /// <c>INSUFFICIENT_BALANCE</c>, <c>REDEEM_EXCEEDS_TOTAL</c>.
+    /// <c>INSUFFICIENT_BALANCE</c>, <c>REDEEM_EXCEEDS_TOTAL</c>, or <c>VALIDATION_ERROR</c>
+    /// for an over-long idempotency key.
     /// </exception>
     Task<CreateOrderResponse> CreateAsync(
         int employeeId,
         CreateOrderRequest request,
+        string? idempotencyKey = null,
         CancellationToken cancellationToken = default);
 
     /// <summary>
@@ -71,6 +78,11 @@ public interface IOrderService
     /// even one item returned takes the line-by-line path instead, because reversing it
     /// wholesale on top of a partial <c>Refund</c> would reverse the same points twice
     /// (decision 20). Everything commits as one database transaction.
+    /// <para>
+    /// Writes on one order are serialized (decision 39): a second cancel arriving while this
+    /// one is open waits for it to commit and is then rejected by the guards above, rather
+    /// than reading the same <c>Completed</c> status and clawing the points back twice.
+    /// </para>
     /// </remarks>
     /// <exception cref="Common.ApiException">
     /// 404 <c>ORDER_NOT_FOUND</c>; 400 <c>ORDER_ALREADY_CANCELLED</c>, <c>ORDER_HAS_RETURNS</c>,
@@ -95,6 +107,11 @@ public interface IOrderService
     /// already been taken. Rounding therefore cannot accumulate — returning an order line by
     /// line claws back exactly <c>PointsEarned</c>, no matter how the lines are grouped or
     /// in what order they come back. Everything commits as one database transaction.
+    /// </para>
+    /// <para>
+    /// Writes on one order are serialized (decision 39): two returns submitted at once are
+    /// applied one after the other, so the second computes its claw-back against the
+    /// quantities the first actually committed.
     /// </para>
     /// </remarks>
     /// <exception cref="Common.ApiException">

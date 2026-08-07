@@ -78,6 +78,15 @@ public class AppDbContext : DbContext
                 "CK_Order_Points",
                 "[PointsEarned] >= 0 AND [PointsRedeemed] >= 0"));
 
+        // One order per Idempotency-Key (decision 40). Filtered, because the header is optional
+        // and SQL Server treats NULLs as equal in a unique index — without the filter only one
+        // order in the whole system could ever be created without a key.
+        modelBuilder.Entity<Order>()
+            .HasIndex(o => o.IdempotencyKey)
+            .IsUnique()
+            .HasFilter("[IdempotencyKey] IS NOT NULL")
+            .HasDatabaseName("UX_Order_IdempotencyKey");
+
         // Restrict delete on every FK — entities are soft-deleted and kept for history,
         // so a physical delete must never cascade through orders / points movements.
         modelBuilder.Entity<Order>()

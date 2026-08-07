@@ -621,3 +621,91 @@
   `[Type] = 'OpeningBalance'`, so the database itself refuses a second opening balance for a
   customer even if two concurrent import runs both pass the app-level "already imported?" check.
   The app-level check is a TOCTOU race; the index is the real guarantee.
+
+## 39. Writes on One Order Are Serialized by a Pessimistic Row Lock
+- **Decision:** `CancelAsync` and `ReturnItemsAsync` both load the order as their **first**
+  statement inside the transaction they already open, through
+  `SELECT * FROM [Orders] WITH (UPDLOCK, HOLDLOCK) WHERE [Id] = @id` (`FromSql`, so the id is
+  still a parameter). The returns path composes `.Include(o => o.OrderItems)` on top; the hint
+  survives EF's subquery composition. A second write on the same order **blocks** until the
+  first commits, then re-reads the state the first one wrote, so the existing guards
+  (`ORDER_ALREADY_CANCELLED`, `ORDER_HAS_RETURNS`, `RETURN_EXCEEDS_QUANTITY`) reject it on the
+  ordinary path. **No new error code**, and no change to any transaction boundary.
+- **Rejected alternative:** Optimistic concurrency with a `rowversion` column on Order /
+  raising the transaction isolation level to SERIALIZABLE / relying on decision 11's
+  conditional balance UPDATE to catch it / an application-level lock keyed on the order id.
+- **Why:** Both write paths were read-then-write on the same row — read the status, decide,
+  then write. Under READ COMMITTED the shared lock on the read is released the instant the
+  statement ends, so two cancellations of one order both read `Completed`, both pass the
+  guard, and both claw the points back: the customer is debited twice for one reversal, with
+  two `Refund` rows to match.
+  **Decision 11's atomic UPDATE does not protect this and was never meant to.** It prevents a
+  *lost update* on the balance column — each claw-back is individually affordable and lands
+  correctly. The defect is that a second claw-back happens at all.
+  Worse, the corruption is *self-consistent*: the balance and the ledger are wrong by the same
+  amount in the same direction, so decision 21's verification query reconciles cleanly and
+  reports nothing. A bug that the one safety net cannot see is a bug that has to be closed
+  structurally.
+- **Why pessimistic rather than optimistic:** a `rowversion` would turn the race into a
+  failure the loser has to be told about — which means a new error code, a client that has to
+  distinguish "retry" from "already done", and a cashier reading a message about a conflict
+  they cannot act on. Blocking produces the *right* answer instead: the loser is simply a
+  double-tap, and `ORDER_ALREADY_CANCELLED` is already exactly what a double-tap deserves.
+  SERIALIZABLE was rejected as far too broad — it would change the locking of every read in
+  those transactions, including the product and customer lookups, to fix a race on one row.
+  An in-process lock was rejected for the same reason decision 27's throttle store is called
+  out as a limitation: it does not survive a second instance, and this one guards money.
+- **Accepted cost (deliberate):** two cashiers acting on the *same* order at the same moment
+  now queue instead of running in parallel. That is one row and a sub-second transaction, and
+  the outcome for the second one is a rejection either way. Orders are independent, so nothing
+  else in the shop waits. The read paths (`GetByIdAsync`, `GetForCustomerAsync`) deliberately
+  take no lock — a returns screen must never block behind a cancellation.
+- **Deadlock note:** every writer takes this one lock, on one row, before touching anything
+  else, so two writers can only ever queue — there is no second resource to hold and no
+  opposite ordering to collide with.
+
+## 40. Idempotent Order Creation via an `Idempotency-Key` Header
+- **Decision:** `POST /api/orders` accepts an optional `Idempotency-Key` request header.
+  `Order` gains a nullable `IdempotencyKey` column (`nvarchar(64)`) with a **filtered unique
+  index** `UX_Order_IdempotencyKey` (`WHERE [IdempotencyKey] IS NOT NULL`), migration
+  `AddOrderIdempotencyKey`. When a key is supplied, `CreateAsync` looks it up first and, if the
+  insert still loses a race, catches the unique-constraint violation, rolls this attempt back,
+  **confirms the winning row exists**, and returns *that* order's receipt. A replay answers
+  **201** with the original order's body and `Location`. **With no header, behaviour is
+  byte-for-byte what it was.**
+- **Follows:** decision 28's "confirm, then translate" — the `DbUpdateException` is only read
+  as "already created" once the row is actually found; otherwise it is re-thrown and becomes a
+  500. Same reasoning as `AuthService.FindOrCreateCustomerAsync`.
+- **Rejected alternative:** No idempotency at all / a separate `IdempotencyKeys` table holding
+  the serialized response / making the header mandatory / answering a replay with 409 /
+  deduplicating on a hash of the request body.
+- **Why:** A cashier's double-tap or a retry over café wifi created **two real orders**, each
+  earning points and each redeeming them. Nothing downstream could tell them apart from a
+  customer who genuinely bought the same thing twice a second apart, so the shop's only
+  recovery was to cancel one by hand — and the customer had already been charged twice at the
+  till. The key is on the `Order` row rather than in a side table because the order *is* the
+  record of the request; a second table would need its own lifecycle, its own cleanup job, and
+  would still have to stay in step with the row it describes. The header is optional because
+  the contract cannot break clients already in the field, and because an order without one is
+  no worse off than it was yesterday. 409 was rejected because the client asked for an order to
+  exist and one does — reporting that as a conflict makes every retry look like a failure the
+  cashier has to interpret. Body-hash deduplication was rejected because two genuinely
+  identical orders one after another are a normal thing to ring up.
+- **`newBalance` on a replay is the balance *now*,** not the balance the first attempt
+  returned. Every other figure comes off the immutable order row (decision 22) and is
+  identical. This is deliberate: the balance is not an order figure, it may legitimately have
+  moved since, and showing a stale one at the counter would be worse than showing a different
+  one.
+- **Accepted limitations (deliberate):**
+  - **The key is trusted, not verified against the body.** Re-using one key for a genuinely
+    different basket returns the first order rather than an error. Detecting that needs a
+    stored request fingerprint, which is the side table this decision rejected. The contract
+    therefore states the client's obligation plainly: **a fresh key per submit attempt, reused
+    only when retrying that same attempt.** A UUID generated when the cashier presses "confirm"
+    satisfies it.
+  - **Keys never expire.** They are one indexed `nvarchar(64)` on a row the system keeps
+    forever anyway (decision 6), so there is nothing to reclaim. A retry arriving a year late
+    still resolves to the right order, which is the correct answer, not a stale one.
+  - **Over-long keys are rejected with `VALIDATION_ERROR`** rather than truncated, so two
+    distinct keys sharing their first 64 characters can never collapse into one order. Same
+    principle as decision 31: validate against the column, do not let the column decide.
