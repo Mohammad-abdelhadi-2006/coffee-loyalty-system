@@ -14,7 +14,7 @@ import { motion } from 'motion/react';
 
 const bestSellers = [
   { id: 1, name: 'قهوة تركي ', price: '0.50 JD', img: turkishCoffeePic, tag: 'الأكثر مبيعا', about: 'ما بتنشرب على عجل. قهوة تركي بطعم مركّز ورغوة دافئة — للحظة بدك تاخدها على راحتك.' },
-  { id: 2, name: 'آيس موكا', price: '2.00 JD', img: iceMochaPic, tag: 'ذات شعبية', about: 'إسبريسو داكن، شوكولاتة غنية، وحليب بارد على تلج. الحلا والقهوة بكوب واحد — بدون ما تختار بينهم.' },
+  { id: 2, name: 'آيس موكا', pricej: '2.00 JD', img: iceMochaPic, tag: 'ذات شعبية', about: 'إسبريسو داكن، شوكولاتة غنية، وحليب بارد على تلج. الحلا والقهوة بكوب واحد — بدون ما تختار بينهم.' },
   { id: 3, name: 'موهيتو', price: '1.75 JD', img: mojitoPic, tag: '', about: 'نعنع طازج ولمسة حامض على تلج مجروش.' },
   { id: 4, name: 'ميلك شيك - فراولة', price: '2.00 JD', img: milkshakeStrawberryPic, tag: '', about: 'باشن فروت وحليب مخفوق لقوام مخملي — حلو، حامض، وبارد بنفس الرشفة.' }
 
