@@ -4,7 +4,13 @@ import turkishCoffeePic from './assets/images/turkishCoffeePic.png'
 import mojitoPic from './assets/images/mojitoPic.png'
 import iceMochaPic from './assets/images/iceMochaPic.png'
 import milkshakeStrawberryPic from './assets/images/milkshakeStrawberryPic.png'
+import galleryPic1 from './assets/images/galleryPic1.png'
+import galleryPic2 from './assets/images/galleryPic2.png'
+import galleryPic3 from './assets/images/galleryPic3.png'
+import galleryPic4 from './assets/images/galleryPic4.png'
+
 import { LuFlame, LuHouse, LuClock, LuCoffee, LuDroplets, LuSparkles } from 'react-icons/lu'
+import { motion } from 'motion/react';
 
 const bestSellers = [
   { id: 1, name: 'قهوة تركي ', price: '0.50 JD', img: turkishCoffeePic, tag: 'الأكثر مبيعا', about: 'ما بتنشرب على عجل. قهوة تركي بطعم مركّز ورغوة دافئة — للحظة بدك تاخدها على راحتك.' },
@@ -18,7 +24,7 @@ function Home() {
     <main>
       <section id="hero">
         <div>
-          <img src={HeroPic} />
+          <motion.img src={HeroPic} alt="" />
         </div>
         <div id="hero-text">
           <h1>قهوة طازجة لكل مزاج</h1>
@@ -75,7 +81,7 @@ function Home() {
 
       <section className='why-us'>
         <div>
-          <img src={WhyUsPic} />
+          <img src={WhyUsPic} alt="" />
         </div>
         <div className="why-text">
           <h2>كوب واحد بيغيّر يومك</h2>
@@ -91,16 +97,27 @@ function Home() {
         <ul className='card-container'>
           {bestSellers.map(item => (
             <li key={item.id}>
-              <img src={item.img} alt="{item.name}" />
-              <div>
-                <h3>{item.name}</h3>
-                <span>{item.price}</span>
+              <img src={item.img} alt={item.name} />
+              <div className='bestSellers-cardInfo'>
+                <div className='namePrice-bestSellers'>
+                  <h3>{item.name}</h3>
+                  <span>{item.price}</span>
+                </div>
+                <span className='tag'>{item.tag}</span>
+                <p>{item.about}</p>
               </div>
-              <span>{item.tag}</span>
-              <p>{item.about}</p>
             </li>
           ))}
         </ul>
+      </section>
+
+      <section className='gallery'>
+        <div className='galleryPic'>
+        <img src={galleryPic1} alt="" />
+        <img src={galleryPic2} alt=""/>
+        <img src={galleryPic3} alt=""/>
+        <img src={galleryPic4} alt=""/>
+          </div>
       </section>
     </main>
   )
