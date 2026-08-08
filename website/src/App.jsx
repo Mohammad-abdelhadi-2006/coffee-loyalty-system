@@ -1,11 +1,20 @@
 import {Header , Footer} from './headerFooter.jsx'
-import Home from './Home.jsx'
+import { Routes, Route } from 'react-router-dom'
+import Home from './pages/Home.jsx'
+import Menu from './pages/Menu.jsx'
+import AboutUs from './pages/AboutUs.jsx'
+import Contact from './pages/Contact.jsx'
 
 function App() {
   return (
     <>
       <Header />
-      <Home />
+      <Routes>
+        <Route path="/" element={<Home />} />
+        <Route path="/menu" element={<Menu />} />
+        <Route path="/aboutus" element={<AboutUs />} />
+        <Route path="/contact" element={<Contact />} />
+      </Routes>
       <Footer />
     </>
   )

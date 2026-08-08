@@ -1,20 +1,21 @@
-import HeroPic from './assets/images/HeroPic.jpg'
-import WhyUsPic from './assets/images/WhyUsPic.png'
-import turkishCoffeePic from './assets/images/turkishCoffeePic.png'
-import mojitoPic from './assets/images/mojitoPic.png'
-import iceMochaPic from './assets/images/iceMochaPic.png'
-import milkshakeStrawberryPic from './assets/images/milkshakeStrawberryPic.png'
-import galleryPic1 from './assets/images/galleryPic1.png'
-import galleryPic2 from './assets/images/galleryPic2.png'
-import galleryPic3 from './assets/images/galleryPic3.png'
-import galleryPic4 from './assets/images/galleryPic4.png'
+import HeroPic from '../assets/images/HeroPic.jpg'
+import WhyUsPic from '../assets/images/WhyUsPic.png'
+import turkishCoffeePic from '../assets/images/turkishCoffeePic.png'
+import mojitoPic from '../assets/images/mojitoPic.png'
+import iceMochaPic from '../assets/images/iceMochaPic.png'
+import milkshakeStrawberryPic from '../assets/images/milkshakeStrawberryPic.png'
+import galleryPic1 from '../assets/images/galleryPic1.png'
+import galleryPic2 from '../assets/images/galleryPic2.png'
+import galleryPic3 from '../assets/images/galleryPic3.png'
+import galleryPic4 from '../assets/images/galleryPic4.png'
+import { Link } from 'react-router-dom'
 
 import { LuFlame, LuHouse, LuClock, LuCoffee, LuDroplets, LuSparkles } from 'react-icons/lu'
 import { motion } from 'motion/react';
 
 const bestSellers = [
   { id: 1, name: 'قهوة تركي ', price: '0.50 JD', img: turkishCoffeePic, tag: 'الأكثر مبيعا', about: 'ما بتنشرب على عجل. قهوة تركي بطعم مركّز ورغوة دافئة — للحظة بدك تاخدها على راحتك.' },
-  { id: 2, name: 'آيس موكا', pricej: '2.00 JD', img: iceMochaPic, tag: 'ذات شعبية', about: 'إسبريسو داكن، شوكولاتة غنية، وحليب بارد على تلج. الحلا والقهوة بكوب واحد — بدون ما تختار بينهم.' },
+  { id: 2, name: 'آيس موكا', price: '2.00 JD', img: iceMochaPic, tag: 'ذات شعبية', about: 'إسبريسو داكن، شوكولاتة غنية، وحليب بارد على تلج. الحلا والقهوة بكوب واحد — بدون ما تختار بينهم.' },
   { id: 3, name: 'موهيتو', price: '1.75 JD', img: mojitoPic, tag: '', about: 'نعنع طازج ولمسة حامض على تلج مجروش.' },
   { id: 4, name: 'ميلك شيك - فراولة', price: '2.00 JD', img: milkshakeStrawberryPic, tag: '', about: 'باشن فروت وحليب مخفوق لقوام مخملي — حلو، حامض، وبارد بنفس الرشفة.' }
 
@@ -24,14 +25,14 @@ function Home() {
     <main>
       <section id="hero">
         <div>
-          <motion.img src={HeroPic} alt="" />
+          <img src={HeroPic} alt="" />
         </div>
         <div id="hero-text">
           <h1>قهوة طازجة لكل مزاج</h1>
           <p>نكهات غنية وأجواء دافئة كل يوم.</p>
           <div className="hero-btn">
-            <button className="btn-primary">المنيو</button>
-            <button className="btn-outline">موقعنا</button>
+            <Link to="/menu" className="btn-primary">المنيو</Link>
+            <Link to="/contact" className="btn-outline">موقعنا</Link>
           </div>
         </div>
       </section>
@@ -87,7 +88,7 @@ function Home() {
           <h2>كوب واحد بيغيّر يومك</h2>
           <p>ما منحضّر قهوة بس. منحضّر اللحظة اللي بتوقف فيها شوي وتاخد نفس.<br /> تفضل, الكوب جاهز.</p>
           <div className="hero-btn">
-            <button className="btn-primary">المنيو</button>
+            <Link to="/menu" className="btn-primary">المنيو</Link>
           </div>
         </div>
       </section>
@@ -113,11 +114,11 @@ function Home() {
 
       <section className='gallery'>
         <div className='galleryPic'>
-        <img src={galleryPic1} alt="" />
-        <img src={galleryPic2} alt=""/>
-        <img src={galleryPic3} alt=""/>
-        <img src={galleryPic4} alt=""/>
-          </div>
+          <img src={galleryPic1} alt="" />
+          <img src={galleryPic2} alt="" />
+          <img src={galleryPic3} alt="" />
+          <img src={galleryPic4} alt="" />
+        </div>
       </section>
     </main>
   )
