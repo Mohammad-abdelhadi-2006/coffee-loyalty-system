@@ -5,6 +5,7 @@ using CoffeeLoyalty.Api.Dtos.Orders;
 using CoffeeLoyalty.Api.Entities;
 using CoffeeLoyalty.Api.Enums;
 using Microsoft.EntityFrameworkCore;
+using Microsoft.EntityFrameworkCore.Storage;
 
 namespace CoffeeLoyalty.Api.Services;
 
@@ -21,31 +22,51 @@ public sealed class OrderService : IOrderService
     private const int MoneyScale = 3;
 
     private readonly AppDbContext _db;
+    private readonly ILogger<OrderService> _logger;
 
     /// <summary>
     /// Creates the service.
     /// </summary>
     /// <param name="db">The application database context.</param>
-    public OrderService(AppDbContext db)
+    /// <param name="logger">Diagnostics; never surfaced to the caller.</param>
+    public OrderService(AppDbContext db, ILogger<OrderService> logger)
     {
         _db = db;
+        _logger = logger;
     }
 
     /// <inheritdoc />
     public async Task<CreateOrderResponse> CreateAsync(
         int employeeId,
         CreateOrderRequest request,
+        string? idempotencyKey = null,
         CancellationToken cancellationToken = default)
     {
         // Non-null by the time the action body runs: [Required] on the nullable ids means
         // model validation has already rejected an absent one.
         var customerId = request.CustomerId!.Value;
         var pointsRedeemed = request.PointsRedeemed ?? 0;
+        var key = NormalizeIdempotencyKey(idempotencyKey);
 
         // One transaction around the reads as well as the writes: the prices that are
         // snapshotted and the availability that is checked have to be the same rows the
         // order is finally written against.
         await using var transaction = await _db.Database.BeginTransactionAsync(cancellationToken);
+
+        if (key is not null)
+        {
+            // The ordinary replay: the first attempt already committed, so the key is on a
+            // row and the retry never rings anything up. The *race* — a retry that arrives
+            // while the first attempt is still open — cannot be seen here and is caught on
+            // the insert below (decision 40). Returning without committing is deliberate:
+            // nothing was written, so disposal's rollback is the whole cleanup.
+            var replay = await FindByIdempotencyKeyAsync(key, cancellationToken);
+
+            if (replay is not null)
+            {
+                return replay;
+            }
+        }
 
         if (!await _db.Customers.AnyAsync(c => c.Id == customerId, cancellationToken))
         {
@@ -69,15 +90,39 @@ public sealed class OrderService : IOrderService
             PointsEarned = pointsEarned,
             PointsRedeemed = pointsRedeemed,
             Status = OrderStatus.Completed,
+            IdempotencyKey = key,
             CreatedAt = DateTimeOffset.UtcNow,
             OrderItems = items.Select(item => item.Entity).ToList()
         };
 
         _db.Orders.Add(order);
 
-        // Saved before the points rows so the generated OrderId exists to link them to.
-        // Still the same transaction — nothing is visible to another connection yet.
-        await _db.SaveChangesAsync(cancellationToken);
+        try
+        {
+            // Saved before the points rows so the generated OrderId exists to link them to.
+            // Still the same transaction — nothing is visible to another connection yet.
+            await _db.SaveChangesAsync(cancellationToken);
+        }
+        catch (DbUpdateException ex) when (key is not null)
+        {
+            // Confirm, then translate (decision 28): the failure only means "already created"
+            // once the winning row is actually there. Anything else — a check constraint, a
+            // truncation, a dead connection — is re-thrown and becomes a 500 rather than being
+            // reported to the cashier as a successful order that does not exist.
+            var winner = await RecoverConcurrentCreateAsync(transaction, key, cancellationToken);
+
+            if (winner is null)
+            {
+                throw;
+            }
+
+            _logger.LogWarning(
+                ex,
+                "Concurrent order creation for one Idempotency-Key; returning the winning order {OrderId}.",
+                winner.OrderId);
+
+            return winner;
+        }
 
         await ApplyPointsAsync(order, cancellationToken);
 
@@ -188,7 +233,10 @@ public sealed class OrderService : IOrderService
     {
         await using var transaction = await _db.Database.BeginTransactionAsync(cancellationToken);
 
-        var order = await _db.Orders.FirstOrDefaultAsync(o => o.Id == orderId, cancellationToken)
+        // Locked before anything is read off it (decision 39): a second cancel on the same
+        // order waits here and then re-reads the status this one is about to write, so the
+        // guard below sees Cancelled instead of the stale Completed both would otherwise read.
+        var order = await LockedOrder(orderId).FirstOrDefaultAsync(cancellationToken)
             ?? throw ApiException.OrderNotFound();
 
         if (order.Status == OrderStatus.Cancelled)
@@ -239,9 +287,12 @@ public sealed class OrderService : IOrderService
     {
         await using var transaction = await _db.Database.BeginTransactionAsync(cancellationToken);
 
-        var order = await _db.Orders
+        // Locked before anything is read off it (decision 39). Two returns racing on the same
+        // order would otherwise both read the same ReturnedQuantity values and both claw back
+        // against them, taking the points for one line twice.
+        var order = await LockedOrder(orderId)
             .Include(o => o.OrderItems)
-            .FirstOrDefaultAsync(o => o.Id == orderId, cancellationToken)
+            .FirstOrDefaultAsync(cancellationToken)
             ?? throw ApiException.OrderNotFound();
 
         if (order.Status == OrderStatus.Cancelled)
@@ -309,6 +360,140 @@ public sealed class OrderService : IOrderService
             PointsClawedBack = pointsClawedBack,
             NewBalance = newBalance
         };
+    }
+
+    /// <summary>
+    /// The order row, taken under an update lock held to the end of the calling transaction
+    /// (decision 39). Every write path on an order starts here.
+    /// </summary>
+    /// <param name="orderId">The order's id.</param>
+    /// <returns>A query for that one order, composable with <c>Include</c> as usual.</returns>
+    /// <remarks>
+    /// <c>UPDLOCK</c> makes the read itself exclusive against another writer's read, and
+    /// <c>HOLDLOCK</c> keeps it until commit rather than releasing it when the statement ends.
+    /// Without both, cancellation and returns are read-then-write under READ COMMITTED: two
+    /// operations on the same order both see <c>Completed</c>, both pass the guards, and both
+    /// reverse the same points. Decision 11's conditional balance UPDATE does not catch that —
+    /// each claw-back is individually affordable, so the balance and the ledger end up wrong
+    /// by the same amount and even the decision 21 verification query reconciles cleanly.
+    /// <para>
+    /// The second caller blocks rather than failing, then re-reads the state the first one
+    /// committed, so <c>ORDER_ALREADY_CANCELLED</c> / <c>ORDER_HAS_RETURNS</c> reject it on
+    /// the ordinary path. No new error code exists for the race, because the client cannot
+    /// tell it from a plain double-tap and would do the same thing either way.
+    /// </para>
+    /// <para>
+    /// Two writers can only ever queue on this one row and in this one order, so the lock
+    /// cannot deadlock against itself. It is deliberately not taken on the read paths —
+    /// <see cref="GetByIdAsync"/> and <see cref="GetForCustomerAsync"/> stay lock-free.
+    /// </para>
+    /// </remarks>
+    private IQueryable<Order> LockedOrder(int orderId) =>
+        _db.Orders.FromSql($"SELECT * FROM [Orders] WITH (UPDLOCK, HOLDLOCK) WHERE [Id] = {orderId}");
+
+    /// <summary>
+    /// Rejects an <c>Idempotency-Key</c> the column cannot hold, and reduces an absent or
+    /// blank header to "no key at all".
+    /// </summary>
+    /// <param name="key">The header value exactly as sent, or null when it was omitted.</param>
+    /// <returns>The trimmed key, or null when the caller supplied none.</returns>
+    /// <remarks>
+    /// Length is checked here rather than left to SQL Server, which would answer an
+    /// over-long key with a truncation error and a 500 instead of the contract's error body
+    /// (the same reasoning as decision 31 for the price column). A whitespace-only header is
+    /// treated as absent: it carries no identity, so honouring it would make every such
+    /// request a replay of the first one.
+    /// </remarks>
+    /// <exception cref="ApiException">400 <c>VALIDATION_ERROR</c>.</exception>
+    private static string? NormalizeIdempotencyKey(string? key)
+    {
+        if (string.IsNullOrWhiteSpace(key))
+        {
+            return null;
+        }
+
+        var trimmed = key.Trim();
+
+        if (trimmed.Length > Order.IdempotencyKeyMaxLength)
+        {
+            throw ApiException.ValidationError(
+                $"مفتاح Idempotency-Key يقبل {Order.IdempotencyKeyMaxLength} حرفاً كحد أقصى");
+        }
+
+        return trimmed;
+    }
+
+    /// <summary>
+    /// Rebuilds the receipt of an order that already carries this key, so a retry is answered
+    /// with the first attempt's result instead of ringing the sale up again (decision 40).
+    /// </summary>
+    /// <param name="key">The normalized idempotency key.</param>
+    /// <param name="cancellationToken">Cancellation token.</param>
+    /// <returns>The original order's receipt, or null when no order carries the key.</returns>
+    /// <remarks>
+    /// Every figure but one is read straight off the immutable order row (decision 22), so the
+    /// replay reports exactly what the first attempt reported. <c>NewBalance</c> is the
+    /// exception: it is the customer's balance *now*, which is the honest answer — the balance
+    /// is not an order figure and may have moved since. Displaying a stale one would be worse
+    /// than displaying a different one.
+    /// </remarks>
+    private async Task<CreateOrderResponse?> FindByIdempotencyKeyAsync(
+        string key,
+        CancellationToken cancellationToken)
+    {
+        var existing = await _db.Orders
+            .AsNoTracking()
+            .Where(o => o.IdempotencyKey == key)
+            .Select(o => new
+            {
+                o.Id,
+                o.Total,
+                o.PointsRedeemed,
+                o.PointsEarned,
+                o.Customer.PointsBalance
+            })
+            .FirstOrDefaultAsync(cancellationToken);
+
+        if (existing is null)
+        {
+            return null;
+        }
+
+        return new CreateOrderResponse
+        {
+            OrderId = existing.Id,
+            Total = existing.Total,
+            CashPaid = existing.Total - (decimal)existing.PointsRedeemed / LoyaltyConstants.RedeemRate,
+            PointsRedeemed = existing.PointsRedeemed,
+            PointsEarned = existing.PointsEarned,
+            NewBalance = existing.PointsBalance
+        };
+    }
+
+    /// <summary>
+    /// Winds this attempt back after the idempotency index rejected it, and reads the order
+    /// the winning attempt committed.
+    /// </summary>
+    /// <param name="transaction">This attempt's transaction, to be abandoned.</param>
+    /// <param name="key">The normalized idempotency key.</param>
+    /// <param name="cancellationToken">Cancellation token.</param>
+    /// <returns>The winner's receipt, or null when there is no winner and the caller should re-throw.</returns>
+    /// <remarks>
+    /// The rollback comes first for two reasons: this attempt's half-written order must not
+    /// survive, and the winner's row was committed on another connection, so it is invisible
+    /// from inside a transaction that started before it. Clearing the change tracker afterwards
+    /// drops the rejected Order and its lines — the same detach decision 28 does, extended to
+    /// the whole graph because an order is never added on its own.
+    /// </remarks>
+    private async Task<CreateOrderResponse?> RecoverConcurrentCreateAsync(
+        IDbContextTransaction transaction,
+        string key,
+        CancellationToken cancellationToken)
+    {
+        await transaction.RollbackAsync(cancellationToken);
+        _db.ChangeTracker.Clear();
+
+        return await FindByIdempotencyKeyAsync(key, cancellationToken);
     }
 
     /// <summary>

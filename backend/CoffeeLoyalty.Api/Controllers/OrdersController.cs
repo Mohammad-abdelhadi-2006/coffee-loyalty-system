@@ -37,14 +37,23 @@ public class OrdersController : ControllerBase
     /// Rings up a sale.
     /// </summary>
     /// <param name="request">The customer, the points to spend, and the basket.</param>
+    /// <param name="idempotencyKey">
+    /// Optional <c>Idempotency-Key</c> header. A key already carried by an order makes the
+    /// request a replay of that order rather than a new sale (decision 40).
+    /// </param>
     /// <param name="cancellationToken">Cancellation token.</param>
     /// <returns>The receipt figures and the customer's new balance.</returns>
     /// <remarks>
     /// The cashier is taken from the token's <c>sub</c> claim, never from the body: who
     /// rang an order up is a fact about the session, and a client that could name someone
     /// else would be able to file its sales under another employee.
+    /// <para>
+    /// A replay answers 201 with the original order's receipt, not 200 or 409: the client
+    /// asked for an order to exist and one does, at the id in the <c>Location</c> header. A
+    /// double-tap at the counter must not read as a failure the cashier has to interpret.
+    /// </para>
     /// </remarks>
-    /// <response code="201">Created; the body is the receipt.</response>
+    /// <response code="201">Created; the body is the receipt. Also returned when a key replays an earlier order.</response>
     /// <response code="400">PRODUCT_UNAVAILABLE, INVALID_QUANTITY, REDEEM_BELOW_MINIMUM, INSUFFICIENT_BALANCE, REDEEM_EXCEEDS_TOTAL or VALIDATION_ERROR.</response>
     /// <response code="401">UNAUTHORIZED — missing or rejected token.</response>
     /// <response code="403">FORBIDDEN — not a cashier or admin.</response>
@@ -57,9 +66,10 @@ public class OrdersController : ControllerBase
     [ProducesResponseType(typeof(ApiError), StatusCodes.Status404NotFound)]
     public async Task<ActionResult<CreateOrderResponse>> CreateOrder(
         [FromBody] CreateOrderRequest request,
+        [FromHeader(Name = "Idempotency-Key")] string? idempotencyKey,
         CancellationToken cancellationToken)
     {
-        var order = await _orders.CreateAsync(User.GetUserId(), request, cancellationToken);
+        var order = await _orders.CreateAsync(User.GetUserId(), request, idempotencyKey, cancellationToken);
 
         return CreatedAtAction(nameof(GetOrder), new { id = order.OrderId }, order);
     }

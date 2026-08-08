@@ -22,6 +22,27 @@
 Token is sent as `Authorization: Bearer <jwt>`.
 Missing/invalid token → `401`. Valid token, wrong role → `403`.
 
+### Cross-origin requests (browsers only)
+
+The dashboard calls the API from a different origin, so the API returns CORS headers for
+origins on an explicit allow-list (decision 41). This concerns **browsers only** — the Flutter
+app sends no `Origin` and is unaffected.
+
+- Allowed origins are configuration, not code: `Cors:AllowedOrigins` locally,
+  `Cors__AllowedOrigins__0`, `…__1` in production (see `DEPLOYMENT.md`). The dashboard's origin
+  must be registered there **exactly as the browser sends it** — scheme + host + optional port,
+  no trailing slash and no path.
+- Any request header and any HTTP method are allowed; preflight `OPTIONS` is answered
+  automatically with `204` and never reaches an endpoint.
+- **Credentials are not enabled.** Send the JWT in the `Authorization` header, as above — do not
+  set `withCredentials` / `credentials: 'include'`, which the policy would refuse.
+- Error responses carry the CORS headers too, so a `4xx`/`5xx` body is readable and the
+  `{ code, message }` shape can be branched on as normal.
+- A request from an unlisted origin gets **no** `Access-Control-Allow-Origin` header. The server
+  still processes it and returns its normal response — it is the browser, not the API, that
+  blocks the caller from reading it. So this is not an authorization mechanism; the auth levels
+  above are.
+
 ### Unified error shape
 
 Every non-2xx response has exactly this body:
@@ -299,6 +320,7 @@ Create an order. **The client never sends prices** — the server reads the
 catalog, snapshots prices, computes everything (formulas in ERD).
 
 - **Auth:** cashier
+- **Headers:** `Idempotency-Key: <string, max 64 chars>` — **optional**, see below.
 - **Request:**
 ```json
 {
@@ -311,6 +333,18 @@ catalog, snapshots prices, computes everything (formulas in ERD).
 }
 ```
   `pointsRedeemed` defaults to 0 if omitted.
+- **Idempotency (decision 40):** when `Idempotency-Key` is sent and an order already carries
+  that key, the request is a **replay**: no second order is created, no points move again, and
+  the response is `201` with the original order's body and `Location`. Sending no header keeps
+  the old behaviour exactly — every call is a new order.
+  - **Client obligation:** generate a **fresh key per submit attempt** (a UUID at the moment
+    the cashier confirms) and re-send that same key only when retrying that same attempt. The
+    server does **not** compare the key against the body — reusing a key for a different
+    basket returns the first order, not an error.
+  - Every field of a replayed body is identical to the original except `newBalance`, which is
+    the customer's balance **now** (the balance is not an order figure and may have moved).
+  - A key longer than 64 characters is `VALIDATION_ERROR`; a blank or whitespace-only header
+    is treated as absent.
 - **Success 201:**
 ```json
 {
@@ -325,7 +359,8 @@ catalog, snapshots prices, computes everything (formulas in ERD).
   Worked example above: `cashPaid` = 6.00 − 250/100 = 3.50 →
   `pointsEarned` = floor(3.50 × 3) = **10** (decision 37). Balance 340 → 340 − 250 + 10 = 100.
 - **Errors:** `CUSTOMER_NOT_FOUND`, `PRODUCT_NOT_FOUND`, `PRODUCT_UNAVAILABLE`,
-  `INVALID_QUANTITY`, `REDEEM_BELOW_MINIMUM`, `INSUFFICIENT_BALANCE`, `REDEEM_EXCEEDS_TOTAL`
+  `INVALID_QUANTITY`, `REDEEM_BELOW_MINIMUM`, `INSUFFICIENT_BALANCE`, `REDEEM_EXCEEDS_TOTAL`,
+  `VALIDATION_ERROR`
 
 ### GET /api/orders/{id}
 - **Auth:** cashier
@@ -344,6 +379,10 @@ exists (ERD rule) or outside the window (decision 16).
 ```json
 { "pointsClawedBack": 10, "pointsRestored": 250, "newBalance": 340 }
 ```
+- **Concurrency (decision 39):** writes on one order are serialized. Two cancellations sent at
+  once do not both take effect — the second waits for the first and is then rejected with
+  `ORDER_ALREADY_CANCELLED`. No extra code and no new response shape; a double-tap simply gets
+  the same answer it would get a second later.
 - **Errors:** `ORDER_NOT_FOUND`, `ORDER_ALREADY_CANCELLED`, `ORDER_HAS_RETURNS`,
   `RETURN_WINDOW_EXPIRED`, `INSUFFICIENT_BALANCE_FOR_RETURN`
 
@@ -371,6 +410,9 @@ orders paid with points can only be fully cancelled.
   Worked example above: `Total` = 6.00 with `PointsRedeemed` = 0 → `PointsEarned` =
   floor(6.00 × 3) = 18. Returning 0.5 × 2.50 → `returnedValueSoFar` = 1.25 →
   `targetClawBack` = floor(18 × 1.25 / 6.00) = floor(3.75) = **3**, none clawed back yet.
+- **Concurrency (decision 39):** writes on one order are serialized, so two returns sent at
+  once are applied one after the other — the second sees the quantities the first committed
+  and either claws back against them or is rejected with `RETURN_EXCEEDS_QUANTITY`.
 - **Errors:** `ORDER_NOT_FOUND`, `ORDER_ALREADY_CANCELLED`, `ORDER_PAID_WITH_POINTS`,
   `ITEM_NOT_IN_ORDER`, `RETURN_EXCEEDS_QUANTITY`, `RETURN_WINDOW_EXPIRED`,
   `INSUFFICIENT_BALANCE_FOR_RETURN`

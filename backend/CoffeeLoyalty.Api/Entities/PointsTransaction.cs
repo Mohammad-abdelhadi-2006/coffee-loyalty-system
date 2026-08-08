@@ -15,8 +15,9 @@ public class PointsTransaction
     /// <summary>Signed effect on the balance (positive = increase, negative = decrease); Type describes the reason, not the sign.</summary>
     public int Amount { get; set; }
 
-    // TODO: stored as string via HasConversion<string>() in Fluent API.
-    /// <summary>Earn / Redeem / Refund / RedeemReversal; kept separate so reports can distinguish them.</summary>
+    /// <summary>Earn / Redeem / Refund / RedeemReversal; kept separate so reports can distinguish them.
+    /// Stored as its member name, not its ordinal — see the HasConversion&lt;string&gt;() mapping in AppDbContext.OnModelCreating,
+    /// which is also what the CK_PointsTransaction_Order and UX_PointsTransaction_Order_Type filters compare against.</summary>
     public PointsTransactionType Type { get; set; }
 
     public DateTimeOffset CreatedAt { get; set; }
