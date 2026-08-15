@@ -193,6 +193,13 @@ public sealed class AuthService : IAuthService
 
         if (customer is not null)
         {
+            // A cashier may have registered this customer by phone only (blank name).
+            // The app collects the name on first login; fill it in here when it is still blank.
+            if (string.IsNullOrWhiteSpace(customer.FullName) && !string.IsNullOrWhiteSpace(fullName))
+            {
+                customer.FullName = fullName.Trim();
+            }
+
             LinkFirebaseUid(customer, identity.Uid);
             await _db.SaveChangesAsync(cancellationToken);
             return customer;

@@ -9,7 +9,7 @@ namespace CoffeeLoyalty.Api.Dtos.Customers;
 public class CreateCustomerRequest
 {
     /// <summary>The customer's display name. Capped at the column width on Customer.</summary>
-    [Required(AllowEmptyStrings = false)]
+    [Required(AllowEmptyStrings = true)]
     [MaxLength(100)]
     public string FullName { get; set; } = string.Empty;
 

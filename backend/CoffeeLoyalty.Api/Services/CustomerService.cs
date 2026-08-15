@@ -33,7 +33,7 @@ public sealed class CustomerService : ICustomerService
         // Normalized first, so the duplicate check and the stored value are the same
         // string that a later app login will be matched against (decision 11).
         var phoneNumber = JordanPhoneNumber.NormalizeOrThrow(request.PhoneNumber);
-        var fullName = NormalizeName(request.FullName);
+        var fullName = request.FullName.Trim();
 
         if (await _db.Customers.AnyAsync(c => c.PhoneNumber == phoneNumber, cancellationToken))
         {
@@ -142,22 +142,6 @@ public sealed class CustomerService : ICustomerService
                 CreatedAt = pt.CreatedAt
             })
             .ToListAsync(cancellationToken);
-    }
-
-    /// <summary>
-    /// Trims the name and refuses one that is nothing but whitespace —
-    /// <see cref="System.ComponentModel.DataAnnotations.RequiredAttribute"/> accepts <c>" "</c>.
-    /// </summary>
-    /// <param name="fullName">The submitted name.</param>
-    /// <returns>The trimmed name.</returns>
-    /// <exception cref="ApiException">400 <c>VALIDATION_ERROR</c> when nothing is left after trimming.</exception>
-    private static string NormalizeName(string fullName)
-    {
-        var trimmed = fullName.Trim();
-
-        return trimmed.Length > 0
-            ? trimmed
-            : throw ApiException.ValidationError("اسم العميل مطلوب");
     }
 
     /// <summary>
