@@ -1,4 +1,5 @@
 import HeroPic from '../assets/images/HeroPic.jpg'
+import HeroBG from '../assets/videos/HeroBG.mp4'
 import WhyUsPic from '../assets/images/WhyUsPic.png'
 import turkishCoffeePic from '../assets/images/turkishCoffeePic.png'
 import mojitoPic from '../assets/images/mojitoPic.png'

@@ -1,4 +1,5 @@
-import { FaInstagram, FaFacebookF, FaTwitter } from 'react-icons/fa'
+import { FaInstagram, FaFacebookF } from 'react-icons/fa'
+import { FaXTwitter } from 'react-icons/fa6'
 import { Link } from 'react-router-dom'
 function Header() {
   return (
@@ -59,7 +60,7 @@ function Footer() {
           <h4>تابعونا</h4>
           <a href="https://instagram.com/..." target='_blank'><FaInstagram /></a>
           <a href="https://facebook.com/..." target='_blank'><FaFacebookF /></a>
-          <a href="https://twitter.com/..." target='_blank'><FaTwitter /></a>
+          <a href="https://x.com/..." target='_blank'><FaXTwitter  /></a>
         </div>
       </div>
     </footer>
