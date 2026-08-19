@@ -1,4 +1,3 @@
-import HeroPic from '../assets/images/HeroPic.jpg'
 import HeroBG from '../assets/videos/HeroBG.mp4'
 import WhyUsPic from '../assets/images/WhyUsPic.png'
 import turkishCoffeePic from '../assets/images/turkishCoffeePic.png'
@@ -25,9 +24,7 @@ function Home() {
   return (
     <main>
       <section id="hero">
-        <div>
-          <img src={HeroPic} alt="" />
-        </div>
+        <video src={HeroBG} autoPlay muted loop playsInline />
         <div id="hero-text">
           <h1>قهوة طازجة لكل مزاج</h1>
           <p>نكهات غنية وأجواء دافئة كل يوم.</p>
@@ -39,45 +36,76 @@ function Home() {
       </section>
 
       <section className='quality'>
-        <div className='card'>
+        <motion.div
+          className='card'
+          initial={{ opacity: 0, y: 100 }}
+          whileInView={{ opacity: 1, y: 0 }}
+          viewport={{ once: true }}
+          transition={{ duration: 0.5 }}>
           <span className="card-icon"><LuClock /></span>
           <h3>خدمة سريعة و ودودة</h3>
-          <p>من الطلب الأول حتى الرشفة الاخيرة.<br /> نجعل كل زيارة سلسة و دافئة و لا <br />تنسى.</p>        </div>
+          <p>من الطلب الأول حتى الرشفة الاخيرة.<br /> نجعل كل زيارة سلسة و دافئة و لا <br />تنسى.</p>
+        </motion.div>
 
-        <div className='card'>
+        <motion.div
+          className='card'
+          initial={{ opacity: 0, y: 100 }}
+          whileInView={{ opacity: 1, y: 0 }}
+          viewport={{ once: true }}
+          transition={{ duration: 0.5, delay: 0.15 }}>
           <span className="card-icon"><LuHouse /></span>
           <h3>اجواء مقهى مريحة</h3>
           <p>مساحة ترحيبية للاجتماعات ,و اللحظات الهادئة ,و الالتقاء بالاصدقاءعلى فنجان قهوة .</p>
-        </div>
+        </motion.div>
 
-        <div className='card'>
+        <motion.div
+          className='card'
+          initial={{ opacity: 0, y: 100 }}
+          whileInView={{ opacity: 1, y: 0 }}
+          viewport={{ once: true }}
+          transition={{ duration: 0.5, delay: 0.3 }}>
           <span className="card-icon"><LuFlame /></span>
           <h3>حبوب محمصة طازجة</h3>
           <p>نختار حبوبا فاخرة و نحمصها بعناية لإبراز رائحة عميقة و نكهة قوية في كل كوب.</p>
-        </div>
+        </motion.div>
       </section>
 
       <section className='crafted-coffee'>
         <h2>تشكيلة قهوة مميزة</h2>
         <p>من الإسبريسو القوي إلى الخلطات الكريمية الناعمة، خيارات تناسب كل ذوق.</p>
         <div className='card-container'>
-          <div className='card'>
+          <motion.div
+          className='card'
+          initial={{ opacity: 0, x: 100 }}
+          whileInView={{ opacity: 1, x: 0 }}
+          viewport={{ once: true }}
+          transition={{ duration: 0.5}}>
             <span className='card-icon'><LuCoffee /></span>
             <h3>إسبريسو كلاسيكي</h3>
             <p>خيارات جريئة وغنية لمحبّي الطعم القوي والأصيل.</p>
-          </div>
+          </motion.div>
 
-          <div className='card'>
+          <motion.div
+          className='card'
+          initial={{ opacity: 0, x: 100 }}
+          whileInView={{ opacity: 1, x: 0 }}
+          viewport={{ once: true }}
+          transition={{ duration: 0.5, delay: 0.15 }}>
             <span className='card-icon'><LuDroplets /></span>
             <h3>نكهات كريمية</h3>
             <p>لاتيه وكابتشينو بقوام حليب حريري ونكهة متوازنة.</p>
-          </div>
+          </motion.div>
 
-          <div className='card'>
+          <motion.div
+          className='card'
+          initial={{ opacity: 0, x: 100 }}
+          whileInView={{ opacity: 1, x: 0 }}
+          viewport={{ once: true }}
+          transition={{ duration: 0.5, delay: 0.3 }}>
             <span className='card-icon'><LuSparkles /></span>
             <h3>خلطاتنا الخاصة</h3>
             <p>وصفات خاصة من مطبخنا تمنحك تجربة فريدة في كل رشفة.</p>
-          </div>
+          </motion.div>
         </div>
       </section>
 

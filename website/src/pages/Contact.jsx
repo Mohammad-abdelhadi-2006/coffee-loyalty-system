@@ -1,3 +1,5 @@
+import { LuMapPin, LuPhone, LuClock } from 'react-icons/lu'
+
 function Contact() {
   return (
     <main>
@@ -21,20 +23,29 @@ function Contact() {
         </div>
         <div className="contact-us">
           <div className="location">
+             <span className="card-icon"><LuMapPin /></span>
+             <div className='contact-info'>
             <h5>العنوان</h5>
             <p>الرصيفة , شارع السعادة</p>
           </div>
+          </div>
           <div className="call">
+             <span className="card-icon"><LuPhone /></span>
+             <div className='contact-info'>
             <h5>الهاتف و التواصل</h5>
             <ul>
-              <li><a href="tel:00962771234567">+962 77 123 4567</a></li>
+              <li><a href="tel:+962771234567">+962771234567</a></li>
               <li><a href="mailto:exm@gmail.com">exm@gmail.com</a></li>
             </ul>
+            </div>
           </div>
           <div className="opening-time">
-            <h3>ساعات العمل</h3>
+             <span className="card-icon"><LuClock /></span>
+             <div className='contact-info'>
+            <h5>ساعات العمل</h5>
             <p>السبت - الخميس : 8:00 صباحا - 10:00 مساءً</p>
             <p>الجمعة : 8:00 صباحا - 12:00 ليلاً</p>
+            </div>
           </div>
         </div>
       </section>

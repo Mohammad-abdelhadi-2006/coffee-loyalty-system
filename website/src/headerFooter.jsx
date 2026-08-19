@@ -1,10 +1,24 @@
 import { FaInstagram, FaFacebookF } from 'react-icons/fa'
 import { FaXTwitter } from 'react-icons/fa6'
-import { Link } from 'react-router-dom'
+import { Link, useLocation } from 'react-router-dom'
+import { useState } from 'react'
+import { motion, useScroll, useMotionValueEvent } from 'motion/react'
 function Header() {
+  const location = useLocation()
+  const isHome = location.pathname === '/'
+    const [hidden, setHidden] = useState(false)
+  const { scrollY } = useScroll()
+
+  useMotionValueEvent(scrollY, 'change', (current) => {
+    setHidden(current > scrollY.getPrevious() && current > 150)
+  })
   return (
-    <header>
-       <Link to="/"> <span className="logo">نكهة فنجان</span></Link>
+        <motion.header
+      className={isHome ? 'transparent' : ''}
+      animate={{ y: hidden ? '-100%' : 0 }}
+      transition={{ duration: 0.35 }}
+    >
+      <Link to="/"> <span className="logo">نكهة فنجان</span></Link>
       <nav>
         <Link to="/">الرئيسية</Link>
         <Link to="/menu">المنيو</Link>
@@ -13,7 +27,7 @@ function Header() {
         <Link to="#">app</Link>
       </nav>
       <a href="#">English</a>
-    </header>
+    </motion.header>
   )
 }
 
@@ -60,7 +74,7 @@ function Footer() {
           <h4>تابعونا</h4>
           <a href="https://instagram.com/..." target='_blank'><FaInstagram /></a>
           <a href="https://facebook.com/..." target='_blank'><FaFacebookF /></a>
-          <a href="https://x.com/..." target='_blank'><FaXTwitter  /></a>
+          <a href="https://x.com/..." target='_blank'><FaXTwitter /></a>
         </div>
       </div>
     </footer>

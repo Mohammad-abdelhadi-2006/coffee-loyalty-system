@@ -58,6 +58,14 @@ header {
   z-index: 10;
 }
 
+header.transparent {
+  position: fixed;
+  inset-inline: 0;
+  background-color: rgba(0, 0, 0, 0.35);
+  backdrop-filter: blur(6px);
+  box-shadow: none;
+}
+
 header nav {
   flex: 1;
   display: flex;
@@ -143,41 +151,41 @@ main {
 
 #hero {
   display: flex;
-  flex-wrap: wrap;
+  justify-content: center;
   align-items: center;
-  gap: var(--gap-lg);
   padding: var(--gap-lg);
   background-color: var(--broun);
   font-size: var(--font-lg);
   height: 100vh;
+  position: relative;
+  overflow: hidden;
 }
 
-#hero>div {
-  flex: 1 1 320px;
-}
-
-#hero h1 {
-  font-size: clamp(1.8rem, 5vw, 3rem);
-  line-height: 1.3;
-}
-
-#hero img {
-  display: block;
+#hero video {
+  position: absolute;
+  inset: 0;
   width: 100%;
-  max-width: 420px;
-  margin-inline: auto;
-  border-radius: 17px;
+  height: 100%;
+  object-fit: cover;
+  z-index: 0;
+}
+
+#hero::after {
+  content: '';
+  position: absolute;
+  inset: 0;
+  background: rgba(0, 0, 0, 0.45);
+  z-index: 1;
 }
 
 #hero-text {
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-  text-align: center;
-  gap: var(--gap1);
   color: var(--text-on-dark);
-  margin-inline-end: var(--gap-lg);
-
+  flex-direction: column;
+  text-align: center;
+  display: flex;
+  align-items: center;
+  position: relative;
+  z-index: 2;
 }
 
 .hero-btn {
@@ -187,6 +195,7 @@ main {
 
 .hero-btn button,
 .hero-btn a {
+  margin-top: var(--gap-lg);
   font-size: var(--font-md);
   font-family: inherit;
   padding: var(--gap-sm) var(--gap-md);
@@ -254,7 +263,7 @@ main {
   margin-top: var(--gap-md);
 }
 
-.quality .card-icon {
+.card-icon {
   width: 48px;
   height: 48px;
   border-radius: 50%;
@@ -308,20 +317,6 @@ main {
   flex-direction: column;
   justify-content: center;
   font-size: var(--font-md);
-}
-
-.crafted-coffee .card-container .card-icon {
-  width: 48px;
-  height: 48px;
-  border-radius: 50%;
-  background-color: var(--tags);
-  color: var(--dark-broun);
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  font-size: 1.5rem;
-  flex-shrink: 0;
-  margin-bottom: var(--gap-lg);
 }
 
 .crafted-coffee .card-container h3 {
@@ -408,7 +403,8 @@ main {
   list-style-type: none;
   gap: var(--gap-md);
   max-width: 1100px;
-  margin-inline: auto;
+  margin: var(--gap-md) auto;
+  padding-inline: var(--gap-md);
 
 }
 
@@ -479,9 +475,6 @@ main {
 
 /*----------------------media query----------------------*/
 @media (max-width: 700px) {
-  #hero-text {
-    margin-inline-end: 0;
-  }
 
   .galleryPic {
     flex-wrap: wrap;
@@ -614,7 +607,7 @@ main {
   padding-bottom: 3rem;
   background: var(--broun);
   color: var(--title-on-dark);
-  font-size: var(--font-title);
+  font-size: var(--font-sub-title);
 }
 
 .items {
@@ -670,13 +663,33 @@ main {
 }
 
 /*----------------------contact page----------------------*/
+.contact-header {
+  text-align: center;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  min-height: 300px;
+  padding: 5rem;
+  background: var(--broun);
+  color: var(--title-on-dark);
+  font-size: var(--font-sub-title);
+}
+
+.contact-header p {
+  font-size: var(--font-lg);
+  color: var(--text-on-dark);
+  margin-top: var(--gap-lg);
+}
+
 .contact {
   display: flex;
   flex-wrap: wrap;
   gap: var(--gap-lg);
   padding: var(--gap-lg);
-  max-width: 70rem;
+  max-width: 80rem;
   margin-inline: auto;
+
 }
 
 .send-message,
@@ -684,35 +697,105 @@ main {
   display: flex;
   flex-direction: column;
   gap: var(--gap1);
-  margin: var(--gap-md);
+  margin: var(--gap-md) 0;
   padding: var(--gap-md);
-  max-width: 30rem;
+  max-width: 80rem;
+  min-height: 35rem;
   flex: 1 1 320px;
 }
 
 .send-message {
   background: var(--cream);
   border-radius: 30px;
-  
+  display: flex;
+  justify-content: center;
 }
 
 .send-message form {
   display: flex;
   flex-direction: column;
   gap: var(--gap1);
-  
+  justify-content: space-between;
+  height: 100%;
+
+}
+
+.send-message h3 {
+  margin-top: 1rem;
+  font-size: var(--font-lg);
+  color: var(--title-on-light);
+}
+
+.row {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: var(--gap1);
+}
+
+.row input {
+  padding: 10px;
+  border-radius: 10px;
+  border: 1px solid #EAE0D3;
+  background: var(--white);
 }
 
 .send-message input,
 .send-message textarea {
-  margin: var(--gap-sm);
+  margin-bottom: var(--gap-md);
+  padding: 10px;
+  border-radius: 10px;
+  border: 1px solid #EAE0D3;
+  background: var(--white);
 }
 
-.row {
+.send-message textarea {
+  resize: vertical;
+  min-height: 8rem;
+}
+
+.send-message .submit-message {
+  width: 10rem;
+  height: 3rem;
+  font-size: var(--font-md);
+  background: var(--broun);
+  color: var(--text-on-dark);
+  font-family: inherit;
+  cursor: pointer;
+
+}
+
+.location,
+.call,
+.opening-time {
+  margin: var(--gap-md);
+  border: 2px solid var(--cream);
+  border-radius: 15px;
+  padding: var(--gap-sm);
+  font-size: var(--font-sm);
+  color: var(--text-on-light);
   display: flex;
+  gap: var(--gap-md);
 }
 
-.row input {
-  flex: 1;
-  width: 30%;
+.contact-us h5 {
+  font-size: var(--font-md);
+  margin-bottom: var(--gap-sm);
+  color: var(--title-on-light);
+}
+
+.contact-us ul {
+  list-style-type: none;
+
+}
+
+.contact-us a {
+  text-decoration: none;
+  color: var(--text-on-light);
+
+}
+
+@media (max-width: 700px) {
+  .row {
+    grid-template-columns: 1fr;
+  }
 }
