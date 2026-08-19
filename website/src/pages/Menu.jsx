@@ -1,3 +1,5 @@
+import { motion } from 'motion/react';
+
 const hotCoffee = [
   { id: 1, name: 'سبانش لاتيه', price: '1.50 JD', about: 'إسبريسو وحليب مبخّر مع لمسة حليب مكثّف محلّى.' },
   { id: 2, name: 'لاتيه', price: '1.50 JD', about: 'إسبريسو مع حليب مبخّر وطبقة رغوة خفيفة.' },
@@ -57,8 +59,14 @@ function Menu() {
       <section className="menu-section">
         <h2>قهوة ساخنة</h2>
         <ul className="items">
-          {hotCoffee.map(item => (
-            <li key={item.id}>
+          {hotCoffee.map((item, index) => (
+            <motion.li
+            key={item.id}
+            initial={{ opacity: 0, y: 20 }}
+            whileInView={{ opacity: 1, y: 0 }}
+            viewport={{ once: true }}
+            transition={{ duration: 0.4, delay: index * 0.08 }}
+>
               <div className="item-info">
                 <div className="namePrice">
                   <span>{item.name}</span>
@@ -67,14 +75,20 @@ function Menu() {
 
                 <p>{item.about}</p>
               </div>
-            </li>
+            </motion.li>
           ))}
         </ul>
 
         <h2>قهوة باردة</h2>
         <ul className="items">
-          {coldCoffee.map(item => (
-            <li key={item.id}>
+          {coldCoffee.map((item, index) => (
+            <motion.li
+            key={item.id}
+            initial={{ opacity: 0, y: 20 }}
+            whileInView={{ opacity: 1, y: 0 }}
+            viewport={{ once: true }}
+            transition={{ duration: 0.4, delay: index * 0.08 }}
+>
               <div className="item-info">
                 <div className="namePrice">
                   <span>{item.name}</span>
@@ -83,14 +97,20 @@ function Menu() {
 
                 <p>{item.about}</p>
               </div>
-            </li>
+            </motion.li>
           ))}
         </ul>
 
         <h2>موهيتو</h2>
         <ul className="items">
-          {mojito.map(item => (
-            <li key={item.id}>
+          {mojito.map((item, index) => (
+            <motion.li
+            key={item.id}
+            initial={{ opacity: 0, y: 20 }}
+            whileInView={{ opacity: 1, y: 0 }}
+            viewport={{ once: true }}
+            transition={{ duration: 0.4, delay: index * 0.08 }}
+>
               <div className="item-info">
                 <div className="namePrice">
                   <span>{item.name}</span>
@@ -99,14 +119,20 @@ function Menu() {
 
                 <p>{item.about}</p>
               </div>
-            </li>
+            </motion.li>
           ))}
         </ul>
 
         <h2>ميلك شيك</h2>
         <ul className="items">
-          {milkshake.map(item => (
-            <li key={item.id}>
+          {milkshake.map((item, index) => (
+            <motion.li
+            key={item.id}
+            initial={{ opacity: 0, y: 20 }}
+            whileInView={{ opacity: 1, y: 0 }}
+            viewport={{ once: true }}
+            transition={{ duration: 0.4, delay: index * 0.08 }}
+>
               <div className="item-info">
                 <div className="namePrice">
                   <span>{item.name}</span>
@@ -115,14 +141,20 @@ function Menu() {
 
                 <p>{item.about}</p>
               </div>
-            </li>
+            </motion.li>
           ))}
         </ul>
 
         <h2>حلويات</h2>
         <ul className="items">
-          {desserts.map(item => (
-            <li key={item.id}>
+          {desserts.map((item, index) => (
+            <motion.li
+            key={item.id}
+            initial={{ opacity: 0, y: 20 }}
+            whileInView={{ opacity: 1, y: 0 }}
+            viewport={{ once: true }}
+            transition={{ duration: 0.4, delay: index * 0.08 }}
+>
               <div className="item-info">
                 <div className="namePrice">
                   <span>{item.name}</span>
@@ -131,7 +163,7 @@ function Menu() {
 
                 <p>{item.about}</p>
               </div>
-            </li>
+            </motion.li>
           ))}
         </ul>
         
