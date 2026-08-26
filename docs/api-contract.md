@@ -311,6 +311,14 @@ The customer's recent orders — feeds the returns screen.
   `type` ∈ `Earn` | `Redeem` | `Refund` | `RedeemReversal` | `OpeningBalance`. Sign is the balance effect (ERD rule).
   `orderId` is `null` only on `OpeningBalance` (decision 38).
 
+### GET /api/customers/me/orders
+The signed-in customer's own purchases — this is what the mobile app's purchases screen reads.
+
+- **Auth:** customer
+- **Query:** `?limit=10` (default 10, max 50)
+- **Success 200:** array of orders, same shape as `GET /api/customers/{id}/orders`.
+- The customer id is taken from the token, never from the path or query, so there is no way to read another customer's orders.
+
 ---
 
 ## 5. Orders

@@ -184,4 +184,37 @@ public class CustomersController : ControllerBase
         var transactions = await _customers.GetTransactionsAsync(User.GetUserId(), limit, cancellationToken);
         return Ok(transactions);
     }
+
+    /// <summary>
+    /// The signed-in customer's own purchase history — the mobile app's "My Purchases" list.
+    /// </summary>
+    /// <param name="limit">How many orders to return, newest first. Defaults to 10, capped at 50.</param>
+    /// <param name="cancellationToken">Cancellation token.</param>
+    /// <returns>The caller's orders with their lines.</returns>
+    /// <remarks>
+    /// Like <c>/me/transactions</c>, the id comes from the token's <c>sub</c> claim and from
+    /// nowhere else — there is no parameter here that could be pointed at another customer's
+    /// orders. That is also why no 404 is documented: <see cref="IOrderService.GetForCustomerAsync"/>
+    /// raises <c>CUSTOMER_NOT_FOUND</c> for an unknown id, but a customer token is only issued
+    /// for a customer that exists, so the code is unreachable on this route.
+    /// The list shape carries no cashier or customer name, so the app cannot read who rang the
+    /// order up.
+    /// </remarks>
+    /// <response code="200">The orders; empty for a customer who has never bought anything.</response>
+    /// <response code="400">VALIDATION_ERROR — limit outside 1..50.</response>
+    /// <response code="401">UNAUTHORIZED — missing or rejected token.</response>
+    /// <response code="403">FORBIDDEN — not a customer token.</response>
+    [HttpGet("me/orders")]
+    [Authorize(Policy = RoleNames.Customer)]
+    [ProducesResponseType(typeof(IReadOnlyList<OrderResponse>), StatusCodes.Status200OK)]
+    [ProducesResponseType(typeof(ApiError), StatusCodes.Status400BadRequest)]
+    [ProducesResponseType(typeof(ApiError), StatusCodes.Status401Unauthorized)]
+    [ProducesResponseType(typeof(ApiError), StatusCodes.Status403Forbidden)]
+    public async Task<ActionResult<IReadOnlyList<OrderResponse>>> GetMyOrders(
+        [FromQuery][Range(1, 50)] int limit = 10,
+        CancellationToken cancellationToken = default)
+    {
+        var orders = await _orders.GetForCustomerAsync(User.GetUserId(), limit, cancellationToken);
+        return Ok(orders);
+    }
 }
