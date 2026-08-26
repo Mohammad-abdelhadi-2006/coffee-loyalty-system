@@ -62,6 +62,7 @@ Every non-2xx response has exactly this body:
 | `ACCOUNT_DISABLED` | 401 | Employee `IsActive = false` (decision 18) |
 | `INVALID_FIREBASE_TOKEN` | 401 | Firebase ID token failed verification |
 | `INVALID_PHONE` | 400 | Not a valid Jordanian number after E.164 normalization |
+| `NAME_REQUIRED` | 400 | First `firebase-login` for an unknown phone, sent without `fullName` (decision 5) |
 | `PHONE_ALREADY_EXISTS` | 409 | Registering a phone that already exists |
 | `CUSTOMER_NOT_FOUND` | 404 | No customer with that id/phone |
 | `EMPLOYEE_NOT_FOUND` | 404 | No employee with that id |
@@ -125,7 +126,13 @@ finds the customer by normalized phone, or creates one (decision 5).
   "expiresAt": "2026-09-13T10:00:00Z"
 }
 ```
-- **Errors:** `INVALID_FIREBASE_TOKEN`, `INVALID_PHONE` (Firebase phone not a valid Jordanian number), `TOO_MANY_REQUESTS`
+- **Errors:** `INVALID_FIREBASE_TOKEN`, `INVALID_PHONE` (Firebase phone not a valid Jordanian number),
+  `NAME_REQUIRED`, `TOO_MANY_REQUESTS`
+
+  `NAME_REQUIRED` is not a failure to show the user: it means this phone number has no
+  customer yet. Send the exchange **without** `fullName` first; on `NAME_REQUIRED`, collect a
+  name and repeat the call with it. It is a code of its own precisely so the app never has to
+  guess a first login from a generic `VALIDATION_ERROR`.
 
 > Both endpoints in this section are throttled **per account** — by username for
 > `/login`, by normalized phone for `/firebase-login` (decision 27). After repeated

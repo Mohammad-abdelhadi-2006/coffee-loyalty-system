@@ -125,4 +125,9 @@ public class ApiException : Exception
     /// <summary>400 — the request body failed validation.</summary>
     public static ApiException ValidationError(string? arabicMessage = null) =>
         new(ErrorCodes.ValidationError, StatusCodes.Status400BadRequest, arabicMessage ?? ErrorMessages.ValidationError);
+
+    /// <summary>400 — first login for an unknown phone number, with no name to create the customer from (decision 5).</summary>
+    /// <param name="arabicMessage">Optional detail; defaults to the generic name-required message.</param>
+    public static ApiException NameRequired(string? arabicMessage = null) =>
+        new(ErrorCodes.NameRequired, StatusCodes.Status400BadRequest, arabicMessage ?? ErrorMessages.NameRequired);
 }

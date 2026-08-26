@@ -23,6 +23,14 @@ public static class ErrorCodes
     /// <summary>400 — malformed request body (model validation).</summary>
     public const string ValidationError = "VALIDATION_ERROR";
 
+    /// <summary>
+    /// 400 — a customer token exchange for a phone number that has no customer yet,
+    /// with no name to create one from. Distinct from <see cref="ValidationError"/> so
+    /// the app can tell a first login apart from a malformed body and collect the name
+    /// instead of showing an error (decision 5).
+    /// </summary>
+    public const string NameRequired = "NAME_REQUIRED";
+
     /// <summary>404 — no active product with that id (a soft-deleted product is gone as far as the API is concerned).</summary>
     public const string ProductNotFound = "PRODUCT_NOT_FOUND";
 
