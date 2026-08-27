@@ -1,7 +1,11 @@
+import 'package:firebase_auth/firebase_auth.dart' hide AuthProvider;
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
+import 'package:provider/provider.dart';
 import 'package:url_launcher/url_launcher.dart';
 
+import '../providers/auth_provider.dart';
+import '../providers/customer_provider.dart';
 import '../theme/app_colors.dart';
 import '../theme/app_text.dart';
 import '../theme/app_theme.dart';
@@ -16,16 +20,16 @@ import 'info/info_screens.dart';
 /// editable — the name and phone are shown as facts, not fields, because
 /// changing either is a cashier's job in the dashboard.
 class SettingsScreen extends StatelessWidget {
-  const SettingsScreen({
-    super.key,
-    this.customerName = 'محمد',
-    this.phoneNumber = '+962 796585723',
-    this.appVersion = '1.0.0',
-  });
+  const SettingsScreen({super.key, this.appVersion = '1.0.0'});
 
-  final String customerName;
-  final String phoneNumber;
+  /// Hardcoded rather than read from the package info: adding package_info_plus
+  /// for one string is not worth a dependency, and this has to be bumped
+  /// alongside pubspec's `version:` at release time either way.
   final String appVersion;
+
+  /// Shown while the profile is still loading, and if it fails. An em dash says
+  /// "not known yet" without pretending the field is empty.
+  static const String _unknown = '—';
 
   Future<void> _confirmSignOut(BuildContext context) async {
     final confirmed = await showModalBottomSheet<bool>(
@@ -37,8 +41,27 @@ class SettingsScreen extends StatelessWidget {
 
     if (confirmed != true || !context.mounted) return;
 
-    // TODO(auth): await context.read<AuthProvider>().signOut() and sign out of
-    // firebase_auth too — the two sessions are separate.
+    final auth = context.read<AuthProvider>();
+    final customers = context.read<CustomerProvider>();
+
+    // Three separate things, and all three have to go. Our JWT, the cached
+    // customer data — otherwise the next person to sign in on this device sees
+    // the previous one's balance until the first load lands — and the Firebase
+    // session, which is independent of ours and would otherwise let the next
+    // sign-in skip the OTP entirely.
+    await auth.signOut();
+    customers.clear();
+
+    try {
+      await FirebaseAuth.instance.signOut();
+    } on FirebaseAuthException catch (e) {
+      // Already signed out locally, so this is not worth blocking on or
+      // telling the customer about; the app is leaving this screen either way.
+      debugPrint('Firebase sign-out failed: ${e.code}');
+    }
+
+    if (!context.mounted) return;
+
     Navigator.of(context).pushAndRemoveUntil(
       MaterialPageRoute<void>(builder: (_) => const LoginScreen()),
       (route) => false,
@@ -47,6 +70,8 @@ class SettingsScreen extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final profile = context.watch<CustomerProvider>().profile;
+
     return SafeArea(
       bottom: false,
       child: Column(
@@ -68,12 +93,15 @@ class SettingsScreen extends StatelessWidget {
                   children: [
                     AppRow(
                       label: 'الاسم',
-                      trailing: Text(customerName, style: AppText.rowValue),
+                      trailing: Text(
+                        profile?.fullName ?? _unknown,
+                        style: AppText.rowValue,
+                      ),
                     ),
                     AppRow(
                       label: 'رقم الهاتف',
                       trailing: Text(
-                        phoneNumber,
+                        profile?.phoneNumber ?? _unknown,
                         style: AppText.rowValue.copyWith(
                           fontFamily: AppText.latin,
                           fontSize: 14.5,

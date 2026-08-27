@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 
+import '../../services/phone_auth_service.dart';
 import '../../theme/app_colors.dart';
 import '../../theme/app_text.dart';
 import '../../theme/app_theme.dart';
@@ -11,9 +12,10 @@ import 'otp_screen.dart';
 /// Phone entry. One field, split into a fixed +962 plate and the subscriber
 /// number, and one CTA that stays disabled until the number is the right length.
 ///
-/// Phase 1 is UI only: nothing is sent. The real flow hands the number to
-/// firebase_auth, and hands the resulting ID token to AuthProvider.signIn once
-/// the OTP verifies.
+/// Submitting starts Firebase phone verification. The OTP screen is only pushed
+/// once Firebase confirms the SMS is on its way — pushing on tap and letting the
+/// next screen discover the failure would put the customer in front of six empty
+/// boxes for a code that is never coming.
 class LoginScreen extends StatefulWidget {
   const LoginScreen({super.key});
 
@@ -23,10 +25,14 @@ class LoginScreen extends StatefulWidget {
 
 class _LoginScreenState extends State<LoginScreen> {
   final TextEditingController _controller = TextEditingController();
+  final PhoneAuthService _phoneAuth = PhoneAuthService();
 
   /// Set on submit, never while typing — telling someone their number is wrong
   /// before they have finished typing it is just noise.
   String? _error;
+
+  /// True from the tap until Firebase either sends the code or fails.
+  bool _isSending = false;
 
   /// A Jordanian mobile subscriber number is 9 digits after the country code.
   /// The backend does the authoritative check (INVALID_PHONE); this only gates
@@ -49,13 +55,54 @@ class _LoginScreenState extends State<LoginScreen> {
 
   void _onChanged() => setState(() => _error = null);
 
-  void _submit() {
-    // TODO(auth): send the OTP through firebase_auth here, and push the OTP
-    // screen only once Firebase has accepted the number.
-    Navigator.of(context).push(
-      MaterialPageRoute<void>(
-        builder: (_) => OtpScreen(nationalNumber: _controller.text),
-      ),
+  Future<void> _submit() async {
+    setState(() {
+      _isSending = true;
+      _error = null;
+    });
+
+    final nationalNumber = _controller.text;
+
+    await _phoneAuth.sendCode(
+      nationalNumber: nationalNumber,
+      onCodeSent: (verificationId, resendToken) {
+        if (!mounted) return;
+        setState(() => _isSending = false);
+        Navigator.of(context).push(
+          MaterialPageRoute<void>(
+            builder: (_) => OtpScreen(
+              nationalNumber: nationalNumber,
+              verificationId: verificationId,
+              resendToken: resendToken,
+            ),
+          ),
+        );
+      },
+      onAutoVerified: (credential) {
+        // Android resolved the SMS on its own. The OTP screen still opens —
+        // it owns the exchange with our backend, and the name step that may
+        // follow it — but with the credential already in hand, so it signs in
+        // straight away and never asks for digits.
+        if (!mounted) return;
+        setState(() => _isSending = false);
+        Navigator.of(context).push(
+          MaterialPageRoute<void>(
+            builder: (_) => OtpScreen(
+              nationalNumber: nationalNumber,
+              autoCredential: credential,
+            ),
+          ),
+        );
+      },
+      onFailed: (message) {
+        // Only reaches here for a failure that actually stopped the flow —
+        // PhoneAuthService drops any that arrive after it already succeeded.
+        if (!mounted) return;
+        setState(() {
+          _isSending = false;
+          _error = message;
+        });
+      },
     );
   }
 
@@ -85,6 +132,7 @@ class _LoginScreenState extends State<LoginScreen> {
               const Spacer(),
               PrimaryButton(
                 label: 'إرسال الرمز',
+                isBusy: _isSending,
                 onPressed: _isComplete ? _submit : null,
               ),
             ],

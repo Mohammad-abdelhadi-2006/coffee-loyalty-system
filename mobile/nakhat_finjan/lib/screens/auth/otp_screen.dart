@@ -1,13 +1,22 @@
 import 'dart:async';
 
+// `hide AuthProvider`: firebase_auth exports a class of that name too, and the
+// one this screen means is ours.
+import 'package:firebase_auth/firebase_auth.dart' hide AuthProvider;
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
+import 'package:provider/provider.dart';
 
+import '../../models/api_error.dart';
+import '../../providers/auth_provider.dart';
+import '../../providers/customer_provider.dart';
+import '../../services/phone_auth_service.dart';
 import '../../theme/app_colors.dart';
 import '../../theme/app_text.dart';
 import '../../theme/app_theme.dart';
 import '../../widgets/app_buttons.dart';
 import '../../widgets/field_error.dart';
+import '../main_shell.dart';
 import 'name_screen.dart';
 
 /// Six-digit code entry, with the three states the design draws: typing, a
@@ -21,19 +30,27 @@ class OtpScreen extends StatefulWidget {
   const OtpScreen({
     super.key,
     required this.nationalNumber,
-    this.isBlocked = false,
+    this.verificationId,
+    this.resendToken,
+    this.autoCredential,
   });
 
   /// The subscriber digits, without the +962. Shown back to the customer so
-  /// they can tell a typo from a delivery problem.
+  /// they can tell a typo from a delivery problem, and used to resend.
   final String nationalNumber;
 
-  /// Renders the blocked frame: boxes dimmed and disabled, the notice in place
-  /// of the countdown, both actions dead.
-  ///
-  /// A parameter in Phase 1 so the state is reachable without a backend. Wiring
-  /// turns it into local state set when AuthProvider reports TOO_MANY_REQUESTS.
-  final bool isBlocked;
+  /// Pairs with the digits the customer types. Null only when Firebase
+  /// auto-verified, in which case [autoCredential] carries the result instead.
+  final String? verificationId;
+
+  /// Firebase's handle for "send that number another SMS". Passing it back on a
+  /// resend is what stops the second request being treated as a fresh one and
+  /// counted separately against the quota.
+  final int? resendToken;
+
+  /// Set when Android retrieved and verified the SMS by itself. The screen
+  /// signs in with it on first build and the customer never types anything.
+  final PhoneAuthCredential? autoCredential;
 
   @override
   State<OtpScreen> createState() => _OtpScreenState();
@@ -52,12 +69,26 @@ class _OtpScreenState extends State<OtpScreen> {
     (_) => FocusNode(),
   );
 
+  final PhoneAuthService _phoneAuth = PhoneAuthService();
+
   Timer? _timer;
   int _remaining = _resendSeconds;
 
   String? _error;
 
-  bool get _isBlocked => widget.isBlocked;
+  /// Set when the backend answers the exchange with TOO_MANY_REQUESTS (429).
+  /// The contract says to surface it and let the customer retry later, never to
+  /// auto-retry, so this kills both actions rather than restarting the
+  /// countdown.
+  bool _isBlocked = false;
+
+  /// A verify or a resend is in flight.
+  bool _isBusy = false;
+
+  /// The current verification handle. Not `widget.verificationId` directly,
+  /// because a resend replaces it with a fresh one.
+  String? _verificationId;
+  int? _resendToken;
 
   String get _code => _controllers.map((c) => c.text).join();
 
@@ -66,7 +97,18 @@ class _OtpScreenState extends State<OtpScreen> {
   @override
   void initState() {
     super.initState();
+    _verificationId = widget.verificationId;
+    _resendToken = widget.resendToken;
     _startCountdown();
+
+    final credential = widget.autoCredential;
+    if (credential != null) {
+      // Auto-retrieval already happened on the login screen. Finish the
+      // sign-in without waiting for input the customer will never give.
+      WidgetsBinding.instance.addPostFrameCallback((_) {
+        _signInWith(() => _phoneAuth.signInWithCredential(credential));
+      });
+    }
   }
 
   @override
@@ -107,11 +149,111 @@ class _OtpScreenState extends State<OtpScreen> {
   }
 
   void _verify() {
-    // TODO(auth): verify the code with firebase_auth, then exchange the
-    // resulting ID token via AuthProvider.signIn. On NAME_REQUIRED the provider
-    // sets isNewCustomer, which is what routes to NameScreen below.
-    Navigator.of(context).push(
-      MaterialPageRoute<void>(builder: (_) => const NameScreen()),
+    final verificationId = _verificationId;
+    if (verificationId == null) {
+      // No handle to check the digits against — the only way here is a resend
+      // that failed, and typing more digits will not fix it.
+      setState(() => _error = 'انتهت صلاحية الرمز، اطلب رمزاً جديداً');
+      return;
+    }
+
+    _signInWith(
+      () =>
+          _phoneAuth.verifyCode(verificationId: verificationId, smsCode: _code),
+    );
+  }
+
+  /// The whole sign-in tail, shared by the typed-code and auto-retrieval paths.
+  ///
+  /// Two steps that can each fail differently: Firebase checks the code, then
+  /// the backend exchanges the resulting ID token for our JWT. Firebase
+  /// failures are about the code; backend failures are about the account.
+  Future<void> _signInWith(Future<String> Function() getIdToken) async {
+    setState(() {
+      _isBusy = true;
+      _error = null;
+    });
+
+    final auth = context.read<AuthProvider>();
+
+    String idToken;
+    try {
+      idToken = await getIdToken();
+    } on FirebaseAuthException catch (e) {
+      if (!mounted) return;
+      setState(() {
+        _isBusy = false;
+        _error = PhoneAuthService.messageForCodeFailure(e);
+      });
+      return;
+    }
+
+    final signedIn = await auth.signIn(idToken);
+    if (!mounted) return;
+
+    setState(() => _isBusy = false);
+
+    if (signedIn) {
+      // The customer already exists. Start loading their data before the shell
+      // paints so the home tab is not empty for a beat.
+      context.read<CustomerProvider>().loadAll();
+      Navigator.of(context).pushAndRemoveUntil(
+        MaterialPageRoute<void>(builder: (_) => const MainShell()),
+        (route) => false,
+      );
+      return;
+    }
+
+    if (auth.isNewCustomer) {
+      // First login for this number: the backend cannot create the account
+      // without a name. The ID token goes with them — the name screen repeats
+      // the exchange, it does not start a new one.
+      Navigator.of(context).push(
+        MaterialPageRoute<void>(builder: (_) => NameScreen(idToken: idToken)),
+      );
+      return;
+    }
+
+    setState(() {
+      if (auth.errorCode == ErrorCodes.tooManyRequests) {
+        _isBlocked = true;
+        _error = null;
+      } else {
+        _error = auth.errorMessage ?? 'تعذّر تسجيل الدخول، حاول مجدداً';
+      }
+    });
+  }
+
+  /// Asks Firebase for another SMS and restarts the countdown.
+  Future<void> _resend() async {
+    setState(() {
+      _isBusy = true;
+      _error = null;
+    });
+
+    await _phoneAuth.sendCode(
+      nationalNumber: widget.nationalNumber,
+      resendToken: _resendToken,
+      onCodeSent: (verificationId, resendToken) {
+        if (!mounted) return;
+        setState(() {
+          _isBusy = false;
+          _verificationId = verificationId;
+          _resendToken = resendToken;
+        });
+        _startCountdown();
+      },
+      onAutoVerified: (credential) {
+        if (!mounted) return;
+        _signInWith(() => _phoneAuth.signInWithCredential(credential));
+      },
+      onFailed: (message) {
+        if (!mounted) return;
+        setState(() {
+          _isBusy = false;
+          _error = message;
+        });
+      },
     );
   }
 
@@ -123,7 +265,7 @@ class _OtpScreenState extends State<OtpScreen> {
 
   @override
   Widget build(BuildContext context) {
-    final canResend = _remaining == 0 && !_isBlocked;
+    final canResend = _remaining == 0 && !_isBlocked && !_isBusy;
 
     return Scaffold(
       body: SafeArea(
@@ -149,14 +291,19 @@ class _OtpScreenState extends State<OtpScreen> {
                   controllers: _controllers,
                   focusNodes: _focusNodes,
                   hasError: _error != null,
-                  enabled: !_isBlocked,
+                  enabled: !_isBlocked && !_isBusy,
                   onChanged: _onDigitChanged,
                 ),
               ),
               if (_isBlocked) ...[
                 const SizedBox(height: 20),
-                const BlockedNotice(
-                  message: 'حاولت كثير. جرّب مرة ثانية بعد 15 دقيقة',
+                // The backend's own Arabic message when it has one — it names
+                // the real wait, which is configuration (`LoginThrottle`) and
+                // not something this screen should hardcode.
+                BlockedNotice(
+                  message:
+                      context.read<AuthProvider>().errorMessage ??
+                      'حاولت كثير. جرّب مرة ثانية بعد شوي',
                 ),
               ] else ...[
                 if (_error != null) ...[
@@ -173,12 +320,13 @@ class _OtpScreenState extends State<OtpScreen> {
               const Spacer(),
               PrimaryButton(
                 label: 'تحقّق',
+                isBusy: _isBusy,
                 onPressed: _isComplete && !_isBlocked ? _verify : null,
               ),
               const SizedBox(height: 6),
               TextAction(
                 label: 'إعادة إرسال الرمز',
-                onPressed: canResend ? _startCountdown : null,
+                onPressed: canResend ? _resend : null,
               ),
             ],
           ),

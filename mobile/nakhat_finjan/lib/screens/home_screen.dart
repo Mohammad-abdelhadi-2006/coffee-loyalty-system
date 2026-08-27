@@ -1,18 +1,21 @@
 import 'package:flutter/material.dart';
+import 'package:provider/provider.dart';
 
+import '../models/points_transaction_response.dart';
+import '../providers/customer_provider.dart';
 import '../theme/app_colors.dart';
 import '../theme/app_text.dart';
 import '../theme/app_theme.dart';
+import '../utils/arabic_format.dart';
 import '../widgets/shimmer_box.dart';
 import '../widgets/surfaces.dart';
 
-/// The four states the home screen can be in. Phase 1 has no data source, so
-/// [HomeScreen.state] selects between them; wiring replaces it with a real
-/// load result.
+/// The four states the home screen can be in, mapped from
+/// [CustomerProvider.homeStatus].
 enum HomeState { loaded, loading, empty, error }
 
 /// One row of the points ledger. A view model, deliberately not a wire model:
-/// the backend's PointsTransactionResponse has a signed integer and an enum,
+/// the backend's [PointsTransactionResponse] has a signed integer and an enum,
 /// and turning those into "+11" and an olive tint is this layer's job.
 class LedgerEntry {
   const LedgerEntry({
@@ -36,87 +39,91 @@ class LedgerEntry {
 
   /// True when the amount is signed at all — an opening balance is not.
   bool get isSigned => amount.startsWith('+') || amount.startsWith('−');
+
+  /// Builds a row from a ledger entry off the wire.
+  ///
+  /// The sign comes from [PointsTransactionResponse.amount] and never from its
+  /// type: the ERD is explicit that the type is the *reason* and the sign is
+  /// the balance effect, so reading direction from the type would let the
+  /// colour disagree with the number on any row the server labels unexpectedly.
+  factory LedgerEntry.fromTransaction(PointsTransactionResponse tx) {
+    final isOpening = tx.type == PointsTransactionType.openingBalance;
+    final isDeduction = tx.amount < 0;
+
+    // U+2212 MINUS SIGN, matching the design — the ASCII hyphen is narrower
+    // and sits at the wrong height beside tabular figures.
+    final magnitude = tx.amount.abs().toString();
+    final String amount;
+    if (isOpening) {
+      amount = magnitude;
+    } else if (isDeduction) {
+      amount = '−$magnitude';
+    } else {
+      amount = '+$magnitude';
+    }
+
+    return LedgerEntry(
+      type: _labelFor(tx.type),
+      amount: amount,
+      date: formatLedgerTimestamp(tx.createdAt),
+      isDeduction: isDeduction,
+    );
+  }
+
+  /// The Arabic label for each reason, as the design words them.
+  static String _labelFor(PointsTransactionType type) => switch (type) {
+    PointsTransactionType.earn => 'نقاط مكتسبة',
+    PointsTransactionType.redeem => 'نقاط مستبدلة',
+    PointsTransactionType.refund => 'استرجاع نقاط (إلغاء)',
+    PointsTransactionType.redeemReversal => 'خصم نقاط (إرجاع)',
+    PointsTransactionType.openingBalance => 'رصيد افتتاحي',
+    // A reason this build does not know. The amount and date are still true and
+    // still add up, so the row is shown with a neutral label rather than hidden
+    // — a ledger with a row missing is worse than one with a vague row.
+    PointsTransactionType.unknown => 'حركة على الرصيد',
+  };
 }
+
+/// Maps a section status onto the four frames this screen draws.
+///
+/// `idle` renders as loading: the shell asks for the data the moment it mounts,
+/// so "not asked yet" and "asking" are the same instant to the customer, and a
+/// fifth blank frame for it would only flash.
+HomeState _stateFrom(SectionStatus status) => switch (status) {
+  SectionStatus.idle || SectionStatus.loading => HomeState.loading,
+  SectionStatus.loaded => HomeState.loaded,
+  SectionStatus.empty => HomeState.empty,
+  SectionStatus.error => HomeState.error,
+};
 
 /// Balance and ledger in one scroll, with pull-to-refresh over both.
 class HomeScreen extends StatelessWidget {
-  const HomeScreen({
-    super.key,
-    this.state = HomeState.loaded,
-    this.customerName = 'محمد',
-    this.pointsBalance = 1240,
-    this.entries = _sampleEntries,
-  });
-
-  final HomeState state;
-  final String customerName;
-  final int pointsBalance;
-  final List<LedgerEntry> entries;
-
-  /// Placeholder data from the design canvas. Phase 1 draws static UI; the real
-  /// values come from CustomerLoginResponse.pointsBalance and
-  /// GET /api/customers/me/transactions.
-  static const List<LedgerEntry> _sampleEntries = [
-    LedgerEntry(
-      type: 'نقاط مكتسبة',
-      amount: '+11',
-      date: '20 آب 2026 · 4:12 م',
-      isDeduction: false,
-    ),
-    LedgerEntry(
-      type: 'نقاط مستبدلة',
-      amount: '−250',
-      date: '14 آب 2026 · 6:40 م',
-      isDeduction: true,
-    ),
-    LedgerEntry(
-      type: 'استرجاع نقاط (إلغاء)',
-      amount: '+3',
-      date: '9 آب 2026 · 1:05 م',
-      isDeduction: false,
-    ),
-    LedgerEntry(
-      type: 'خصم نقاط (إرجاع)',
-      amount: '−11',
-      date: '2 آب 2026 · 7:22 م',
-      isDeduction: true,
-    ),
-    LedgerEntry(
-      type: 'نقاط مكتسبة',
-      amount: '+21',
-      date: '28 تموز 2026 · 5:10 م',
-      isDeduction: false,
-    ),
-    LedgerEntry(
-      type: 'رصيد افتتاحي',
-      amount: '100',
-      date: '3 حزيران 2026',
-      isDeduction: false,
-    ),
-  ];
-
-  /// Groups the thousands the way the design shows them (1,240).
-  static String _formatBalance(int value) {
-    final digits = value.toString();
-    final buffer = StringBuffer();
-    for (var i = 0; i < digits.length; i++) {
-      if (i > 0 && (digits.length - i) % 3 == 0) buffer.write(',');
-      buffer.write(digits[i]);
-    }
-    return buffer.toString();
-  }
+  const HomeScreen({super.key});
 
   @override
   Widget build(BuildContext context) {
+    final customers = context.watch<CustomerProvider>();
+
+    final state = _stateFrom(customers.homeStatus);
+    // The greeting drops the name rather than inventing one: on the very first
+    // load there is no profile yet, and «مرحباً» alone reads fine.
+    final name = customers.fullName;
+    final entries = customers.transactions
+        .map(LedgerEntry.fromTransaction)
+        .toList(growable: false);
+
     return SafeArea(
       bottom: false,
       child: RefreshIndicator(
         color: AppColors.caramel,
         backgroundColor: AppColors.surface,
-        // TODO(data): reload the balance and the ledger together — the design
-        // note says pull-to-refresh reloads both.
-        onRefresh: () async {},
+        // Balance and ledger together, which is what the design note requires —
+        // `refreshHome` fetches both and lands them as one state change.
+        onRefresh: () => context.read<CustomerProvider>().refreshHome(),
         child: ListView(
+          // Always scrollable: pull-to-refresh needs somewhere to pull from,
+          // and the error and empty bodies are shorter than the viewport.
+          physics: const AlwaysScrollableScrollPhysics(),
           padding: const EdgeInsets.fromLTRB(
             AppMetrics.screenPadding,
             12,
@@ -126,17 +133,20 @@ class HomeScreen extends StatelessWidget {
           children: switch (state) {
             HomeState.loading => const [_LoadingBody()],
             HomeState.error => [
-              _Greeting(name: customerName),
+              _Greeting(name: name),
               const SizedBox(height: 16),
               ErrorState(
-                message: 'صار خطأ، ما قدرنا نحمّل بياناتك',
-                onRetry: () {},
+                message:
+                    customers.homeError ?? 'صار خطأ، ما قدرنا نحمّل بياناتك',
+                onRetry: () => context.read<CustomerProvider>().refreshHome(),
               ),
             ],
             HomeState.empty => [
-              _Greeting(name: customerName),
+              _Greeting(name: name),
               const SizedBox(height: 16),
-              const _BalanceCard(balance: '0'),
+              _BalanceCard(
+                balance: formatGroupedNumber(customers.pointsBalance),
+              ),
               const SizedBox(height: 28),
               const _LedgerHeading(),
               const SizedBox(height: 12),
@@ -146,9 +156,11 @@ class HomeScreen extends StatelessWidget {
               ),
             ],
             HomeState.loaded => [
-              _Greeting(name: customerName),
+              _Greeting(name: name),
               const SizedBox(height: 16),
-              _BalanceCard(balance: _formatBalance(pointsBalance)),
+              _BalanceCard(
+                balance: formatGroupedNumber(customers.pointsBalance),
+              ),
               const SizedBox(height: 28),
               const _LedgerHeading(),
               const SizedBox(height: 12),
@@ -168,11 +180,15 @@ class HomeScreen extends StatelessWidget {
 class _Greeting extends StatelessWidget {
   const _Greeting({required this.name});
 
-  final String name;
+  /// Null until the profile lands. The comma goes with it — «مرحباً،» trailing
+  /// into nothing reads like the name failed to load, which it has, but saying
+  /// so is not the greeting's job.
+  final String? name;
 
   @override
   Widget build(BuildContext context) {
-    return Text('مرحباً، $name', style: AppText.greeting);
+    final greeting = name == null || name!.isEmpty ? 'مرحباً' : 'مرحباً، $name';
+    return Text(greeting, style: AppText.greeting);
   }
 }
 

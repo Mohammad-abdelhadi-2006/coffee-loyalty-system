@@ -1,17 +1,36 @@
 import 'package:flutter/material.dart';
+import 'package:provider/provider.dart';
 
+import '../models/order_response.dart';
+import '../providers/customer_provider.dart';
 import '../theme/app_colors.dart';
 import '../theme/app_text.dart';
 import '../theme/app_theme.dart';
+import '../utils/arabic_format.dart';
 import '../widgets/surfaces.dart';
 
 /// What became of an order. The three the design draws, with the tint each
 /// carries: olive for a clean order, caramel for a partial return, brick for a
 /// cancellation.
 enum OrderStatus {
-  completed('مكتمل', AppColors.earn, AppColors.earnTint, AppColors.earnTintBorder),
-  returned('مُرتجع', AppColors.caramel, AppColors.caramelTint, AppColors.caramelTintBorder),
-  cancelled('ملغى', AppColors.deduct, AppColors.deductTint, AppColors.deductTintBorder);
+  completed(
+    'مكتمل',
+    AppColors.earn,
+    AppColors.earnTint,
+    AppColors.earnTintBorder,
+  ),
+  returned(
+    'مُرتجع',
+    AppColors.caramel,
+    AppColors.caramelTint,
+    AppColors.caramelTintBorder,
+  ),
+  cancelled(
+    'ملغى',
+    AppColors.deduct,
+    AppColors.deductTint,
+    AppColors.deductTintBorder,
+  );
 
   const OrderStatus(this.label, this.foreground, this.background, this.border);
 
@@ -19,6 +38,19 @@ enum OrderStatus {
   final Color foreground;
   final Color background;
   final Color border;
+
+  /// Maps the wire status onto the pill this screen draws.
+  ///
+  /// A status this build does not recognise falls to [completed]: it is what
+  /// the overwhelming majority of orders are, and an order that reached the
+  /// customer's history did happen. Showing it plainly beats inventing a fourth
+  /// pill for a value we cannot describe.
+  static OrderStatus fromWire(OrderWireStatus status) => switch (status) {
+    OrderWireStatus.completed => completed,
+    OrderWireStatus.returned => returned,
+    OrderWireStatus.cancelled => cancelled,
+    OrderWireStatus.unknown => completed,
+  };
 }
 
 /// One line on an order — «كابتشينو × 2».
@@ -27,6 +59,16 @@ class PurchaseLine {
 
   final String label;
   final String price;
+
+  /// Builds a line from an order item off the wire.
+  ///
+  /// The label folds the quantity into the product name the way the design
+  /// writes it, and the price is the line total rather than the unit price —
+  /// the card shows what each line cost, not what one of it costs.
+  factory PurchaseLine.fromItem(OrderItemResponse item) => PurchaseLine(
+    label: '${item.productName} × ${formatQuantity(item.quantity)}',
+    price: formatMoney(item.lineTotal),
+  );
 }
 
 /// One order in the history.
@@ -48,6 +90,20 @@ class Purchase {
 
   /// Null when the order was paid entirely in cash — most of them.
   final String? pointsSpent;
+
+  /// Builds a card from an order off the wire.
+  factory Purchase.fromOrder(OrderResponse order) => Purchase(
+    date: formatArabicDate(order.createdAt),
+    status: OrderStatus.fromWire(order.status),
+    lines: order.items.map(PurchaseLine.fromItem).toList(growable: false),
+    total: formatMoney(order.total),
+    pointsEarned: order.pointsEarned.toString(),
+    // Only shown when points were actually spent: a "استبدلت 0 نقطة" line on
+    // every cash order would be noise on the majority of the list.
+    pointsSpent: order.pointsRedeemed > 0
+        ? order.pointsRedeemed.toString()
+        : null,
+  );
 }
 
 /// Read-only purchase history.
@@ -56,55 +112,15 @@ class Purchase {
 /// actions in the dashboard, and putting them here would imply the customer can
 /// reverse their own order.
 class PurchasesScreen extends StatelessWidget {
-  const PurchasesScreen({super.key, this.purchases = _samplePurchases});
-
-  final List<Purchase> purchases;
-
-  /// Placeholder data from the design canvas. The live list comes from
-  /// GET /api/customers/me/orders.
-  static const List<Purchase> _samplePurchases = [
-    Purchase(
-      date: '20 آب 2026',
-      status: OrderStatus.completed,
-      lines: [
-        PurchaseLine(label: 'كابتشينو × 2', price: '3.00'),
-        PurchaseLine(label: 'اسبريسو × 1', price: '0.75'),
-      ],
-      total: '3.75',
-      pointsEarned: '11',
-    ),
-    Purchase(
-      date: '14 آب 2026',
-      status: OrderStatus.completed,
-      lines: [
-        PurchaseLine(label: 'ايس لاتيه × 1', price: '1.50'),
-        PurchaseLine(label: 'فرابتشينو × 1', price: '2.00'),
-      ],
-      total: '3.50',
-      pointsEarned: '10',
-      pointsSpent: '250',
-    ),
-    Purchase(
-      date: '9 آب 2026',
-      status: OrderStatus.cancelled,
-      lines: [PurchaseLine(label: 'قهوة تركي × 2', price: '1.00')],
-      total: '1.00',
-      pointsEarned: '3',
-    ),
-    Purchase(
-      date: '2 آب 2026',
-      status: OrderStatus.returned,
-      lines: [
-        PurchaseLine(label: 'موهيتو فراولة × 2', price: '3.50'),
-        PurchaseLine(label: 'بن كولومبي × 0.5 كغم', price: '6.00'),
-      ],
-      total: '9.50',
-      pointsEarned: '28',
-    ),
-  ];
+  const PurchasesScreen({super.key});
 
   @override
   Widget build(BuildContext context) {
+    final customers = context.watch<CustomerProvider>();
+    final purchases = customers.orders
+        .map(Purchase.fromOrder)
+        .toList(growable: false);
+
     return SafeArea(
       bottom: false,
       child: Column(
@@ -116,34 +132,65 @@ class PurchasesScreen extends StatelessWidget {
           ),
           const SizedBox(height: 18),
           Expanded(
-            child: purchases.isEmpty
-                ? const Padding(
-                    padding: EdgeInsets.symmetric(
-                      horizontal: AppMetrics.screenPadding,
-                    ),
-                    child: EmptyState(
-                      icon: Icons.shopping_bag_outlined,
-                      message: 'لسا ما اشتريت إشي',
-                      verticalPadding: 64,
-                    ),
-                  )
-                : ListView.separated(
-                    padding: const EdgeInsets.fromLTRB(
-                      AppMetrics.screenPadding,
-                      0,
-                      AppMetrics.screenPadding,
-                      24,
-                    ),
-                    itemCount: purchases.length,
-                    separatorBuilder: (_, _) => const SizedBox(height: 14),
-                    itemBuilder: (context, index) =>
-                        _PurchaseCard(purchase: purchases[index]),
+            child: switch (customers.ordersStatus) {
+              SectionStatus.idle || SectionStatus.loading => const Center(
+                child: CircularProgressIndicator(color: AppColors.caramel),
+              ),
+              SectionStatus.error => _Padded(
+                child: ErrorState(
+                  message:
+                      customers.ordersError ??
+                      'صار خطأ، ما قدرنا نحمّل مشترياتك',
+                  onRetry: () =>
+                      context.read<CustomerProvider>().refreshOrders(),
+                ),
+              ),
+              SectionStatus.empty => const _Padded(
+                child: EmptyState(
+                  icon: Icons.shopping_bag_outlined,
+                  message: 'لسا ما اشتريت إشي',
+                  verticalPadding: 64,
+                ),
+              ),
+              SectionStatus.loaded => RefreshIndicator(
+                color: AppColors.caramel,
+                backgroundColor: AppColors.surface,
+                onRefresh: () =>
+                    context.read<CustomerProvider>().refreshOrders(),
+                child: ListView.separated(
+                  physics: const AlwaysScrollableScrollPhysics(),
+                  padding: const EdgeInsets.fromLTRB(
+                    AppMetrics.screenPadding,
+                    0,
+                    AppMetrics.screenPadding,
+                    24,
                   ),
+                  itemCount: purchases.length,
+                  separatorBuilder: (_, _) => const SizedBox(height: 14),
+                  itemBuilder: (context, index) =>
+                      _PurchaseCard(purchase: purchases[index]),
+                ),
+              ),
+            },
           ),
         ],
       ),
     );
   }
+}
+
+/// The screen's side padding, for the states that are a single centred card
+/// rather than a list that supplies its own.
+class _Padded extends StatelessWidget {
+  const _Padded({required this.child});
+
+  final Widget child;
+
+  @override
+  Widget build(BuildContext context) => Padding(
+    padding: const EdgeInsets.symmetric(horizontal: AppMetrics.screenPadding),
+    child: child,
+  );
 }
 
 class _PurchaseCard extends StatelessWidget {
@@ -179,9 +226,7 @@ class _PurchaseCard extends StatelessWidget {
                 crossAxisAlignment: CrossAxisAlignment.baseline,
                 textBaseline: TextBaseline.alphabetic,
                 children: [
-                  Expanded(
-                    child: Text(line.label, style: AppText.orderItem),
-                  ),
+                  Expanded(child: Text(line.label, style: AppText.orderItem)),
                   const SizedBox(width: 12),
                   Text(
                     line.price,

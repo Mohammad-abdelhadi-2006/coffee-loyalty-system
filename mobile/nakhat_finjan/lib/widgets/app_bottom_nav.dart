@@ -9,7 +9,11 @@ import '../theme/app_text.dart';
 enum AppTab {
   home('الرئيسية', Icons.home_rounded, Icons.home_outlined),
   menu('المنيو', Icons.local_cafe_rounded, Icons.local_cafe_outlined),
-  purchases('مشترياتي', Icons.shopping_bag_rounded, Icons.shopping_bag_outlined),
+  purchases(
+    'مشترياتي',
+    Icons.shopping_bag_rounded,
+    Icons.shopping_bag_outlined,
+  ),
   settings('الإعدادات', Icons.tune_rounded, Icons.tune_outlined);
 
   const AppTab(this.label, this.activeIcon, this.icon);
@@ -92,7 +96,11 @@ class _NavTab extends StatelessWidget {
             mainAxisSize: MainAxisSize.min,
             mainAxisAlignment: MainAxisAlignment.center,
             children: [
-              Icon(isCurrent ? tab.activeIcon : tab.icon, size: 24, color: color),
+              Icon(
+                isCurrent ? tab.activeIcon : tab.icon,
+                size: 24,
+                color: color,
+              ),
               const SizedBox(height: 5),
               Text(
                 tab.label,

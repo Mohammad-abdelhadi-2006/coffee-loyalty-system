@@ -1,9 +1,13 @@
 import 'package:flutter/material.dart';
+import 'package:provider/provider.dart';
 
+import '../../providers/auth_provider.dart';
+import '../../providers/customer_provider.dart';
 import '../../theme/app_colors.dart';
 import '../../theme/app_text.dart';
 import '../../theme/app_theme.dart';
 import '../../widgets/app_buttons.dart';
+import '../../widgets/field_error.dart';
 import '../main_shell.dart';
 
 /// «شو اسمك؟» — first run only.
@@ -15,7 +19,12 @@ import '../main_shell.dart';
 /// repeated with what they type. A returning customer never sees it — the name
 /// is ignored for a phone that already has an account.
 class NameScreen extends StatefulWidget {
-  const NameScreen({super.key});
+  const NameScreen({super.key, required this.idToken});
+
+  /// The Firebase ID token that already proved the phone number, carried over
+  /// from the OTP screen. The exchange is repeated with it plus the name — the
+  /// customer is not asked to verify their number twice.
+  final String idToken;
 
   @override
   State<NameScreen> createState() => _NameScreenState();
@@ -26,6 +35,8 @@ class _NameScreenState extends State<NameScreen> {
 
   /// The backend caps FullName at 100 characters.
   static const int _maxLength = 100;
+
+  String? _error;
 
   bool get _isValid => _controller.text.trim().isNotEmpty;
 
@@ -41,9 +52,30 @@ class _NameScreenState extends State<NameScreen> {
     super.dispose();
   }
 
-  void _submit() {
-    // TODO(auth): repeat AuthProvider.signIn with fullName: _controller.text,
-    // and only navigate once it returns true.
+  Future<void> _submit() async {
+    setState(() => _error = null);
+
+    final auth = context.read<AuthProvider>();
+    final customers = context.read<CustomerProvider>();
+
+    // The same exchange as before, now with the name the account will be
+    // created from. The trim matters: the backend rejects a blank name, and a
+    // name of only spaces is blank.
+    final signedIn = await auth.signIn(
+      widget.idToken,
+      fullName: _controller.text.trim(),
+    );
+
+    if (!mounted) return;
+
+    if (!signedIn) {
+      setState(
+        () => _error = auth.errorMessage ?? 'تعذّر إنشاء الحساب، حاول مجدداً',
+      );
+      return;
+    }
+
+    customers.loadAll();
     Navigator.of(context).pushAndRemoveUntil(
       MaterialPageRoute<void>(builder: (_) => const MainShell()),
       (route) => false,
@@ -85,9 +117,14 @@ class _NameScreenState extends State<NameScreen> {
               Text('شو اسمك؟', style: AppText.nameTitle),
               const SizedBox(height: 30),
               _NameField(controller: _controller, maxLength: _maxLength),
+              if (_error != null) ...[
+                const SizedBox(height: 10),
+                FieldError(message: _error!),
+              ],
               const Spacer(),
               PrimaryButton(
                 label: 'متابعة',
+                isBusy: context.watch<AuthProvider>().isLoading,
                 onPressed: _isValid ? _submit : null,
               ),
             ],

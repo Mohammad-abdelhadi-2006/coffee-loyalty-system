@@ -1,16 +1,23 @@
 import 'package:flutter/material.dart';
+import 'package:provider/provider.dart';
 
+import '../providers/auth_provider.dart';
 import '../theme/app_colors.dart';
 import '../theme/app_text.dart';
 import 'auth/login_screen.dart';
+import 'main_shell.dart';
 
 /// The first frame: the mark, a hairline, the name.
 ///
-/// In the design this is the "silent token check" — it decides between the
-/// login screen and the home tab without the customer seeing a spinner. Phase 1
-/// has no token check, so it holds for a beat and goes to login. Wiring it up
-/// means awaiting AuthProvider.restoreSession here and branching on
-/// isAuthenticated.
+/// The design calls this the "silent token check": it decides between the login
+/// screen and the home tab without the customer ever seeing a spinner. Reading
+/// the stored JWT takes a few milliseconds, so the branch is held behind a short
+/// minimum so the mark does not flash past — a splash that vanishes instantly
+/// reads as a glitch, not as speed.
+///
+/// It only checks that a token *exists*. Whether it is still good is the
+/// server's call, and a rejected one is cleared by `ApiClient`'s 401 handler,
+/// which sends the customer back to login from wherever they landed.
 class SplashScreen extends StatefulWidget {
   const SplashScreen({super.key});
 
@@ -25,14 +32,25 @@ class _SplashScreenState extends State<SplashScreen> {
     _leave();
   }
 
+  /// The shortest the mark stays up, however fast the token check returns.
+  static const Duration _minimumHold = Duration(milliseconds: 900);
+
   Future<void> _leave() async {
-    // TODO(auth): replace the delay with
-    //   await context.read<AuthProvider>().restoreSession()
-    // and route to MainShell when isAuthenticated, LoginScreen otherwise.
-    await Future<void>.delayed(const Duration(milliseconds: 1200));
+    final auth = context.read<AuthProvider>();
+
+    // Both together, so the hold overlaps the read instead of following it.
+    await Future.wait([
+      auth.restoreSession(),
+      Future<void>.delayed(_minimumHold),
+    ]);
+
     if (!mounted) return;
+
     Navigator.of(context).pushReplacement(
-      MaterialPageRoute<void>(builder: (_) => const LoginScreen()),
+      MaterialPageRoute<void>(
+        builder: (_) =>
+            auth.isAuthenticated ? const MainShell() : const LoginScreen(),
+      ),
     );
   }
 

@@ -170,7 +170,11 @@ class EmptyState extends StatelessWidget {
       padding: EdgeInsets.symmetric(vertical: verticalPadding, horizontal: 20),
       child: Column(
         children: [
-          Icon(icon, size: 40, color: AppColors.caramel.withValues(alpha: 0.45)),
+          Icon(
+            icon,
+            size: 40,
+            color: AppColors.caramel.withValues(alpha: 0.45),
+          ),
           const SizedBox(height: 16),
           Text(
             message,

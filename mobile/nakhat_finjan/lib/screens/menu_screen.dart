@@ -1,25 +1,18 @@
 import 'package:flutter/material.dart';
+import 'package:provider/provider.dart';
 
+import '../models/product_response.dart';
+import '../providers/customer_provider.dart';
 import '../theme/app_colors.dart';
 import '../theme/app_text.dart';
 import '../theme/app_theme.dart';
+import '../utils/arabic_format.dart';
 import '../widgets/surfaces.dart';
 
-/// One item on the menu. Browse only — the design has no cart, no add, no
-/// quantity control anywhere on this screen.
-class MenuItem {
-  const MenuItem({required this.name, required this.price, this.perKilo = false});
-
-  final String name;
-
-  /// Formatted to two decimals, as the backend sends it.
-  final String price;
-
-  /// Beans are sold by weight, so the unit reads «د.أ / كغم» rather than «د.أ».
-  final bool perKilo;
-}
-
 /// The menu: a category strip and the items in the selected category.
+///
+/// Browse only — the design has no cart, no add, and no quantity control
+/// anywhere on this screen.
 class MenuScreen extends StatefulWidget {
   const MenuScreen({super.key});
 
@@ -28,57 +21,18 @@ class MenuScreen extends StatefulWidget {
 }
 
 class _MenuScreenState extends State<MenuScreen> {
-  /// The six categories from the design. The real list comes from the products
-  /// endpoint — these are here so the strip has something to lay out.
-  static const List<String> _categories = [
-    'قهوة ساخنة',
-    'قهوة باردة',
-    'موهيتو',
-    'ميلك شيك',
-    'حلويات',
-    'بن',
-  ];
+  /// The six strips, in the order the design lays them out. Fixed rather than
+  /// derived from what came back, so the strip does not reshuffle itself
+  /// between loads or lose a category the moment it sells out.
+  static const List<ProductCategory> _categories = ProductCategory.displayed;
 
   int _selected = 0;
 
-  /// ⚠️ INCOMPLETE — flagged rather than invented.
-  ///
-  /// The design canvas says the source menu was cut off after «موهيتو»: ميلك
-  /// شيك، حلويات and بن never arrived, and the بن prices below are the
-  /// designer's placeholders, not real ones. Only «قهوة ساخنة» is real here.
-  /// The three unfilled categories render the empty state instead of made-up
-  /// items — a wrong price on a menu is worse than a blank one.
-  ///
-  /// TODO(content): get the remaining categories and the real per-kilo bean
-  /// prices from the shop, then delete this map — the live data comes from
-  /// GET /api/products.
-  static const Map<String, List<MenuItem>> _itemsByCategory = {
-    'قهوة ساخنة': [
-      MenuItem(name: 'سبانش لاتيه', price: '1.50'),
-      MenuItem(name: 'لاتيه', price: '1.50'),
-      MenuItem(name: 'كابتشينو', price: '1.50'),
-      MenuItem(name: 'اميركانو', price: '1.00'),
-      MenuItem(name: 'V60', price: '1.50'),
-      MenuItem(name: 'اسبريسو', price: '0.75'),
-      MenuItem(name: 'دبل شوت', price: '1.00'),
-      MenuItem(name: 'موكا دارك', price: '2.00'),
-      MenuItem(name: 'فلات وايت', price: '1.50'),
-      MenuItem(name: 'قهوة تركي', price: '0.50'),
-      MenuItem(name: 'ريد آي', price: '1.50'),
-    ],
-    // Placeholder prices — see the note above.
-    'بن': [
-      MenuItem(name: 'بن كولومبي', price: '12.00', perKilo: true),
-      MenuItem(name: 'بن اثيوبي', price: '14.00', perKilo: true),
-      MenuItem(name: 'بن برازيلي', price: '10.00', perKilo: true),
-      MenuItem(name: 'خلطة المقهى', price: '9.00', perKilo: true),
-    ],
-  };
-
   @override
   Widget build(BuildContext context) {
+    final customers = context.watch<CustomerProvider>();
     final category = _categories[_selected];
-    final items = _itemsByCategory[category] ?? const <MenuItem>[];
+    final items = customers.productsIn(category);
 
     return SafeArea(
       bottom: false,
@@ -97,40 +51,83 @@ class _MenuScreenState extends State<MenuScreen> {
           ),
           const SizedBox(height: 18),
           Expanded(
-            child: ListView(
-              padding: const EdgeInsets.fromLTRB(
-                AppMetrics.screenPadding,
-                0,
-                AppMetrics.screenPadding,
-                24,
+            child: switch (customers.productsStatus) {
+              SectionStatus.idle || SectionStatus.loading => const Center(
+                child: CircularProgressIndicator(color: AppColors.caramel),
               ),
-              children: [
-                if (items.isEmpty)
-                  const EmptyState(
-                    icon: Icons.notes_outlined,
-                    message: 'لا يوجد أصناف حالياً',
-                    verticalPadding: 56,
-                  )
-                else
-                  HairlineList(
-                    children: [
-                      for (final item in items)
-                        AppRow(
-                          label: item.name,
-                          trailing: PriceLabel(
-                            amount: item.price,
-                            unit: item.perKilo ? 'د.أ / كغم' : 'د.أ',
-                          ),
-                        ),
-                    ],
+              SectionStatus.error => _Padded(
+                child: ErrorState(
+                  message:
+                      customers.productsError ??
+                      'صار خطأ، ما قدرنا نحمّل المنيو',
+                  onRetry: () =>
+                      context.read<CustomerProvider>().refreshProducts(),
+                ),
+              ),
+              // `empty` here means the whole menu came back empty; a category
+              // with nothing in it is the same empty card, reached through the
+              // `items.isEmpty` branch below.
+              SectionStatus.empty || SectionStatus.loaded => RefreshIndicator(
+                color: AppColors.caramel,
+                backgroundColor: AppColors.surface,
+                onRefresh: () =>
+                    context.read<CustomerProvider>().refreshProducts(),
+                child: ListView(
+                  physics: const AlwaysScrollableScrollPhysics(),
+                  padding: const EdgeInsets.fromLTRB(
+                    AppMetrics.screenPadding,
+                    0,
+                    AppMetrics.screenPadding,
+                    24,
                   ),
-              ],
-            ),
+                  children: [
+                    if (items.isEmpty)
+                      const EmptyState(
+                        icon: Icons.notes_outlined,
+                        message: 'لا يوجد أصناف حالياً',
+                        verticalPadding: 56,
+                      )
+                    else
+                      HairlineList(
+                        children: [
+                          for (final item in items)
+                            AppRow(
+                              label: item.name,
+                              trailing: PriceLabel(
+                                amount: formatMoney(item.price),
+                                // Beans sell by weight, so their price needs
+                                // the unit spelled out; everything else is per
+                                // item and does not.
+                                unit: item.unitType == ProductUnitType.kg
+                                    ? 'د.أ / كغم'
+                                    : 'د.أ',
+                              ),
+                            ),
+                        ],
+                      ),
+                  ],
+                ),
+              ),
+            },
           ),
         ],
       ),
     );
   }
+}
+
+/// The screen's side padding, for the states that are a single centred card
+/// rather than a list that supplies its own.
+class _Padded extends StatelessWidget {
+  const _Padded({required this.child});
+
+  final Widget child;
+
+  @override
+  Widget build(BuildContext context) => Padding(
+    padding: const EdgeInsets.symmetric(horizontal: AppMetrics.screenPadding),
+    child: child,
+  );
 }
 
 /// The horizontally scrolling category pills.
@@ -144,7 +141,7 @@ class _CategoryStrip extends StatelessWidget {
     required this.onSelected,
   });
 
-  final List<String> categories;
+  final List<ProductCategory> categories;
   final int selected;
   final ValueChanged<int> onSelected;
 
@@ -160,7 +157,7 @@ class _CategoryStrip extends StatelessWidget {
         itemCount: categories.length,
         separatorBuilder: (_, _) => const SizedBox(width: 10),
         itemBuilder: (context, index) => _CategoryChip(
-          label: categories[index],
+          label: categories[index].label,
           isSelected: index == selected,
           onTap: () => onSelected(index),
         ),
