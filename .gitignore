@@ -443,3 +443,5 @@ secrets/
 **/appsettings.Local.json
 **/appsettings.*.Local.json
 
+
+docs/design/
