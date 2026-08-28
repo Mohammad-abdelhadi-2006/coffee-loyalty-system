@@ -9,6 +9,19 @@ import 'secure_store.dart';
 /// construct a Dio. Auth headers and the 401 sign-out live here so no service
 /// has to remember them.
 class ApiClient {
+  /// Called when a stored token is rejected on a non-auth path.
+  ///
+  /// A static hook rather than a constructor argument on purpose: services
+  /// construct their own `ApiClient()` with no arguments, so there is nowhere to
+  /// thread a callback through, and there is only ever one app to send back to
+  /// login. `main` sets it once at startup.
+  ///
+  /// It is set rather than injected because the alternative — a navigator this
+  /// layer imports — would put Flutter's widget tree inside the networking
+  /// code. Keeping it a bare callback means this file still knows nothing about
+  /// widgets, and the test suite never triggers it.
+  static void Function()? onUnauthorized;
+
   ApiClient({SecureStore? secureStore, Dio? dio})
     : _store = secureStore ?? SecureStore(),
       dio =
@@ -65,9 +78,11 @@ class ApiClient {
       // signing key rotated. Nothing the app can do with it, so drop it.
       await _store.deleteToken();
 
-      // TODO(auth): redirect to the login screen once routing exists — e.g. a
-      // navigatorKey or an onUnauthorized callback wired to AuthProvider.signOut(),
-      // so the user does not sit on a screen that silently stopped loading.
+      // ...and tell the app, so the customer is not left on a screen that
+      // silently stopped loading. Several in-flight calls can 401 together —
+      // the home screen alone makes two — so the handler must be safe to run
+      // more than once; the one in `main` is.
+      onUnauthorized?.call();
     }
 
     handler.next(err);
