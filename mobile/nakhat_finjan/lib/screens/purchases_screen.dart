@@ -145,31 +145,44 @@ class PurchasesScreen extends StatelessWidget {
                       context.read<CustomerProvider>().refreshOrders(),
                 ),
               ),
-              SectionStatus.empty => const _Padded(
-                child: EmptyState(
-                  icon: Icons.shopping_bag_outlined,
-                  message: 'لسا ما اشتريت إشي',
-                  verticalPadding: 64,
-                ),
-              ),
-              SectionStatus.loaded => RefreshIndicator(
+              // `empty` shares this branch so the pull gesture survives an
+              // empty history: a customer whose first order was just rung up
+              // would otherwise have no way to see it, since the tabs live in
+              // an IndexedStack and only load once. The gesture is received by
+              // the scrollable, so the empty card sits inside a list of its own
+              // rather than beside one.
+              SectionStatus.empty || SectionStatus.loaded => RefreshIndicator(
                 color: AppColors.caramel,
                 backgroundColor: AppColors.surface,
                 onRefresh: () =>
                     context.read<CustomerProvider>().refreshOrders(),
-                child: ListView.separated(
-                  physics: const AlwaysScrollableScrollPhysics(),
-                  padding: const EdgeInsets.fromLTRB(
-                    AppMetrics.screenPadding,
-                    0,
-                    AppMetrics.screenPadding,
-                    24,
-                  ),
-                  itemCount: purchases.length,
-                  separatorBuilder: (_, _) => const SizedBox(height: 14),
-                  itemBuilder: (context, index) =>
-                      _PurchaseCard(purchase: purchases[index]),
-                ),
+                child: purchases.isEmpty
+                    ? ListView(
+                        physics: const AlwaysScrollableScrollPhysics(),
+                        padding: const EdgeInsets.symmetric(
+                          horizontal: AppMetrics.screenPadding,
+                        ),
+                        children: const [
+                          EmptyState(
+                            icon: Icons.shopping_bag_outlined,
+                            message: 'لسا ما اشتريت إشي',
+                            verticalPadding: 64,
+                          ),
+                        ],
+                      )
+                    : ListView.separated(
+                        physics: const AlwaysScrollableScrollPhysics(),
+                        padding: const EdgeInsets.fromLTRB(
+                          AppMetrics.screenPadding,
+                          0,
+                          AppMetrics.screenPadding,
+                          24,
+                        ),
+                        itemCount: purchases.length,
+                        separatorBuilder: (_, _) => const SizedBox(height: 14),
+                        itemBuilder: (context, index) =>
+                            _PurchaseCard(purchase: purchases[index]),
+                      ),
               ),
             },
           ),
