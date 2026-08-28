@@ -3,10 +3,12 @@ import { FaXTwitter } from 'react-icons/fa6'
 import { Link, useLocation } from 'react-router-dom'
 import { useState } from 'react'
 import { motion, useScroll, useMotionValueEvent } from 'motion/react'
+import { useLanguage } from './context/LanguageContext.jsx'
 function Header() {
   const location = useLocation()
   const isHome = location.pathname === '/'
-    const [hidden, setHidden] = useState(false)
+  const [hidden, setHidden] = useState(false)
+  const { language, toggleLanguage } = useLanguage()
   const { scrollY } = useScroll()
 
   useMotionValueEvent(scrollY, 'change', (current) => {
@@ -26,7 +28,9 @@ function Header() {
         <Link to="/contact">التواصل</Link>
         <Link to="#">app</Link>
       </nav>
-      <a href="#">English</a>
+      <button type="button" onClick={toggleLanguage} aria-label="Change language">
+        {language === 'ar' ? 'English' : 'العربية'}
+      </button>
     </motion.header>
   )
 }
