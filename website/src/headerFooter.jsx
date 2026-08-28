@@ -15,7 +15,7 @@ function Header() {
 
   return (
     <motion.header
-      className="transparent" // <--- أصبح شفافاً لكل الصفحات دائماً
+      className="transparent"
       animate={{ y: hidden ? '-100%' : 0 }}
       transition={{ duration: 0.35 }}
     >
