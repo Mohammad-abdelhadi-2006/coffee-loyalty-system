@@ -83,11 +83,17 @@ header a {
   justify-content: center;
 }
 
-header .logo {
-  margin: var(--gap-sm);
-  color: var(--white);
-  font-size: 2rem;
-  font-weight: bold;
+header .logo-img {
+  height: 50px;
+  width: auto;
+  object-fit: contain;
+  display: block;
+  padding-right: var(--gap-sm);
+}
+
+header .logo-link {
+  padding: 0;
+  padding-right: 0.5rem;
 }
 
 /*----------------------footer----------------------*/
@@ -521,6 +527,7 @@ main {
   justify-content: center;
   text-align: center;
   gap: var(--gap1);
+  padding: 7rem 0 4rem;
 }
 
 .story-title h2 {
@@ -608,6 +615,7 @@ main {
   background: var(--broun);
   color: var(--title-on-dark);
   font-size: var(--font-sub-title);
+  padding: 9rem 0 5rem;
 }
 
 .items {
@@ -674,6 +682,7 @@ main {
   background: var(--broun);
   color: var(--title-on-dark);
   font-size: var(--font-sub-title);
+  padding: 7rem 0 4rem;
 }
 
 .contact-header p {

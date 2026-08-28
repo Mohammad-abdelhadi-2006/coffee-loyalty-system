@@ -4,6 +4,8 @@ import { Link, useLocation } from 'react-router-dom'
 import { useState } from 'react'
 import { motion, useScroll, useMotionValueEvent } from 'motion/react'
 import { useLanguage } from './context/LanguageContext.jsx'
+import logoImg from './assets/images/logo.png'
+
 function Header() {
   const location = useLocation()
   const isHome = location.pathname === '/'
@@ -14,13 +16,16 @@ function Header() {
   useMotionValueEvent(scrollY, 'change', (current) => {
     setHidden(current > scrollY.getPrevious() && current > 150)
   })
+
   return (
-        <motion.header
+    <motion.header
       className={isHome ? 'transparent' : ''}
       animate={{ y: hidden ? '-100%' : 0 }}
       transition={{ duration: 0.35 }}
     >
-      <Link to="/"> <span className="logo">نكهة فنجان</span></Link>
+      <Link to="/" className="logo-link">
+        <img src={logoImg} alt="نكهة فنجان" className="logo-img" />
+      </Link>
       <nav>
         <Link to="/">الرئيسية</Link>
         <Link to="/menu">المنيو</Link>
