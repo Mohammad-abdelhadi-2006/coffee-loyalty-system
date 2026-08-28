@@ -1,18 +1,21 @@
 import aboutUsPic from '../assets/images/aboutUsPic.png'
+import { useLanguage } from '../context/LanguageContext.jsx'
 function AboutUs() {
+  const { translations } = useLanguage()
+
   return (
     <main>
       <div className='story-title'>
-        <p className='tag'>قصتنا</p>
-        <h2>حكاية بدأت من فكرة بسيطة</h2>
-        <p className='story-p'>مقهى حي صغير تحوّل إلى بيت ثانٍ لعشاق القهوة.</p>
+        <p className='tag'>{translations.about.tag}</p>
+        <h2>{translations.about.title}</h2>
+        <p className='story-p'>{translations.about.subtitle}</p>
       </div>
       <div className='story-container'>
         <div className='story-text'>
-          <p className='text-tag'>كيف بدأنا</p>
-          <h2>من زاوية صغيرة إلى وجهة يومية  لعشاق القهوة</h2>
-          <p>بدأت نكهة فنجان بحلم بسيط: تقديم كوب قهوة يشعر فيه الزائر بالراحة والاهتمام في كل تفصيلة. افتتحنا أول فرع لنا في زاوية هادئة من المدينة، بمعدات متواضعة وشغف كبير بحبوب البن المحمصة بعناية.</p>
-          <p>مع كل كوب قدّمناه، كبرت قصتنا بفضل ثقة زوارنا. اليوم أصبحت نكهة فنجان مساحة يجتمع فيها الأصدقاء، ويعمل فيها الطلاب، ويبدأ فيها الكثيرون صباحهم — وما زلنا نحمّص كل حبة بنفس الحب الذي بدأنا به.</p>
+          <p className='text-tag'>{translations.about.startedTag}</p>
+          <h2>{translations.about.startedTitle}</h2>
+          <p>{translations.about.paragraphs[0]}</p>
+          <p>{translations.about.paragraphs[1]}</p>
         </div>
 
         <div className='story-pic'>
@@ -22,8 +25,8 @@ function AboutUs() {
       </div>
 
       <div className='founder-text'>
-        <h4>"كل ما بنيناه هنا بدأ بفكرة واحدة: أن نجعل فنجان القهوة لحظة يستحقها كل زائر."</h4>
-        <p>- مؤسس نكهة فنجان</p>
+        <h4>"{translations.about.quote}"</h4>
+        <p>- {translations.about.founder}</p>
       </div>
     </main>
   )

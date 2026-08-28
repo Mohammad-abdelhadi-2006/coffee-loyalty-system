@@ -96,6 +96,22 @@ header .logo-link {
   padding-right: 0.5rem;
 }
 
+header button{
+  padding: 0.5rem;
+  background: var(--text-on-dark);
+  color: var(--title-on-light);
+  font-size: var(--font-md);
+  font-family: inherit;
+  border-radius: 8px;
+  cursor: pointer;
+  transition: background-color 0.2s, color 0.2s;
+  border: 0;
+}
+
+header button:hover{
+  background: var(--broun);
+  color: var(--text-on-dark);
+}
 /*----------------------footer----------------------*/
 footer {
   background-color: var(--fotter-bg);
@@ -148,6 +164,19 @@ footer p {
   font-size: 1.4rem;
   color: var(--tags);
   padding: 0;
+}
+
+footer .logo-img {
+  height: 50px;
+  width: auto;
+  object-fit: contain;
+  display: block;
+  padding-right: var(--gap-sm);
+}
+
+footer .logo-link {
+  padding: 0;
+  padding-right: 0.5rem;
 }
 
 /*----------------------hero----------------------*/
@@ -425,7 +454,7 @@ main {
 
 .best-sellers img {
   width: 8.5rem;
-  margin-left: var(--gap-sm);
+  margin: 0 var(--gap-sm);
   border-radius: 20px;
   object-fit: cover;
   flex-shrink: 0;

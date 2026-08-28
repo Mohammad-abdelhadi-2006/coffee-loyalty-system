@@ -3,23 +3,21 @@ import { FaXTwitter } from 'react-icons/fa6'
 import { Link, useLocation } from 'react-router-dom'
 import { useState } from 'react'
 import { motion, useScroll, useMotionValueEvent } from 'motion/react'
-import { useLanguage } from './context/LanguageContext.jsx'
 import logoImg from './assets/images/logo.png'
+import { useLanguage } from './context/LanguageContext.jsx'
 
 function Header() {
-  const location = useLocation()
-  const isHome = location.pathname === '/'
   const [hidden, setHidden] = useState(false)
-  const { language, toggleLanguage } = useLanguage()
+  const { language, toggleLanguage, translations } = useLanguage()
   const { scrollY } = useScroll()
 
   useMotionValueEvent(scrollY, 'change', (current) => {
-    setHidden(current > scrollY.getPrevious() && current > 150)
+    setHidden(current > scrollY.getPrevious() && current > 151)
   })
 
   return (
     <motion.header
-      className={isHome ? 'transparent' : ''}
+      className="transparent"
       animate={{ y: hidden ? '-100%' : 0 }}
       transition={{ duration: 0.35 }}
     >
@@ -27,14 +25,14 @@ function Header() {
         <img src={logoImg} alt="نكهة فنجان" className="logo-img" />
       </Link>
       <nav>
-        <Link to="/">الرئيسية</Link>
-        <Link to="/menu">المنيو</Link>
-        <Link to="/aboutus">قصتنا</Link>
-        <Link to="/contact">التواصل</Link>
-        <Link to="#">app</Link>
+        <Link to="/">{translations.nav.home}</Link>
+        <Link to="/menu">{translations.nav.menu}</Link>
+        <Link to="/aboutus">{translations.nav.story}</Link>
+        <Link to="/contact">{translations.nav.contact}</Link>
+        <Link to="#">{translations.nav.app}</Link>
       </nav>
       <button type="button" onClick={toggleLanguage} aria-label="Change language">
-        {language === 'ar' ? 'English' : 'العربية'}
+        {language === 'ar' ? translations.nav.english : translations.nav.arabic}
       </button>
     </motion.header>
   )
@@ -42,45 +40,49 @@ function Header() {
 
 
 function Footer() {
+  const { translations } = useLanguage()
+
   return (
     <footer>
       <div className="footer-inner">
         <div>
-          <h3>نكهة فنجان</h3>
-          <p>نقدم لكم قهوة مصنوعة يدوياً , و لحظات دافئة كل يوم.</p>
+          <Link to="/" className="logo-link">
+        <img src={logoImg} alt="نكهة فنجان" className="logo-img" />
+      </Link>
+          <p>{translations.footer.description}</p>
         </div>
 
         <div>
-          <h3>روابط سريعة</h3>
+          <h3>{translations.footer.quickLinks}</h3>
           <ul>
-            <li>        <Link to="/Home">الرئيسية</Link>
+            <li><Link to="/">{translations.nav.home}</Link>
             </li>
-            <li>        <Link to="/Menu">المنيو</Link>
+            <li><Link to="/menu">{translations.nav.menu}</Link>
             </li>
-            <li>        <Link to="/AboutUs">قصتنا</Link>
+            <li><Link to="/aboutus">{translations.nav.story}</Link>
             </li>
-            <li>        <Link to="/Contact">التواصل</Link>
+            <li><Link to="/contact">{translations.nav.contact}</Link>
             </li>
           </ul>
         </div>
 
         <div>
-          <h3>ساعات العمل</h3>
-          <p>السبت - الخميس : 8:00 صباحا - 10:00 مساءً</p>
-          <p>الجمعة : 8:00 صباحا - 12:00 ليلاً</p>
+          <h3>{translations.footer.openingHours}</h3>
+          <p>{translations.footer.weekdays}</p>
+          <p>{translations.footer.friday}</p>
         </div>
 
         <div>
-          <h3>للتواصل</h3>
+          <h3>{translations.footer.contact}</h3>
           <ul>
-            <li><a href="mailto:exm@gmail.com">ايميل</a></li>
-            <li><a href="tel:+962771234567">رقم الهاتف</a></li>
-            <li>الرصيفة ,شارع السعادة.</li>
+            <li><a href="mailto:exm@gmail.com">{translations.footer.email}</a></li>
+            <li><a href="tel:+962771234567">{translations.footer.phone}</a></li>
+            <li>{translations.footer.address}</li>
           </ul>
         </div>
 
         <div className="social">
-          <h4>تابعونا</h4>
+          <h4>{translations.footer.followUs}</h4>
           <a href="https://instagram.com/..." target='_blank'><FaInstagram /></a>
           <a href="https://facebook.com/..." target='_blank'><FaFacebookF /></a>
           <a href="https://x.com/..." target='_blank'><FaXTwitter /></a>

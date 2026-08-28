@@ -1,8 +1,10 @@
 import { useState } from 'react'
 import emailjs from '@emailjs/browser'
 import { LuMapPin, LuPhone, LuClock } from 'react-icons/lu'
+import { useLanguage } from '../context/LanguageContext.jsx'
 
 function Contact() {
+  const { translations } = useLanguage()
   const [isSending, setIsSending] = useState(false)
   const [status, setStatus] = useState('')
 
@@ -27,10 +29,10 @@ function Contact() {
         'rIdyy0GwQ_WSZCZe5',
       )
       form.reset()
-      setStatus('تم إرسال رسالتك بنجاح.')
+      setStatus(translations.contact.success)
     } catch (error) {
       console.error('EmailJS send failed:', error)
-      setStatus('تعذر إرسال الرسالة. حاول مرة أخرى.')
+      setStatus(translations.contact.failure)
     } finally {
       setIsSending(false)
     }
@@ -39,23 +41,23 @@ function Contact() {
   return (
     <main>
       <div className="contact-header">
-        <h1>نسعد بسماع رأيك</h1>
-        <p>سواء عندك سؤال، اقتراح، أو حجز مناسبة — فريقنا جاهز للرد عليك.</p>
+        <h1>{translations.contact.title}</h1>
+        <p>{translations.contact.subtitle}</p>
       </div>
 
       <section className="contact">
         <div className="send-message">
           <form onSubmit={handleSubmit}>
-            <h3>ارسل لنا رسالة</h3>
+            <h3>{translations.contact.formTitle}</h3>
             <div className="row">
-              <input type="text" name="name" placeholder="الأسم كامل" required />
-              <input type="email" name="email" placeholder="البريد الألكتروني" required />
+              <input type="text" name="name" placeholder={translations.contact.name} required />
+              <input type="email" name="email" placeholder={translations.contact.email} required />
             </div>
-            <input type="text" name="subject" placeholder="الموضوع" className="topic" required />
-            <textarea name="message" placeholder="رسالتك" className="message" required></textarea>
+            <input type="text" name="subject" placeholder={translations.contact.subject} className="topic" required />
+            <textarea name="message" placeholder={translations.contact.message} className="message" required></textarea>
             <input
               type="submit"
-              value={isSending ? 'جاري الإرسال...' : 'ارسل الرسالة'}
+              value={isSending ? translations.contact.sending : translations.contact.send}
               className="submit-message"
               disabled={isSending}
             />
@@ -66,26 +68,26 @@ function Contact() {
           <div className="location">
              <span className="card-icon"><LuMapPin /></span>
              <div className='contact-info'>
-            <h5>العنوان</h5>
-            <p>الرصيفة , شارع السعادة</p>
+            <h5>{translations.contact.address}</h5>
+            <p>{translations.contact.addressValue}</p>
           </div>
           </div>
           <div className="call">
              <span className="card-icon"><LuPhone /></span>
              <div className='contact-info'>
-            <h5>الهاتف و التواصل</h5>
+            <h5>{translations.contact.phone}</h5>
             <ul>
-              <li><a href="tel:+962771234567">+962771234567</a></li>
-              <li><a href="mailto:exm@gmail.com">exm@gmail.com</a></li>
+              <li><a href={`tel:${translations.contact.phoneValue}`}>{translations.contact.phoneValue}</a></li>
+              <li><a href={`mailto:${translations.contact.emailValue}`}>{translations.contact.emailValue}</a></li>
             </ul>
             </div>
           </div>
           <div className="opening-time">
              <span className="card-icon"><LuClock /></span>
              <div className='contact-info'>
-            <h5>ساعات العمل</h5>
-            <p>السبت - الخميس : 8:00 صباحا - 10:00 مساءً</p>
-            <p>الجمعة : 8:00 صباحا - 12:00 ليلاً</p>
+            <h5>{translations.contact.hours}</h5>
+            <p>{translations.contact.weekdays}</p>
+            <p>{translations.contact.friday}</p>
             </div>
           </div>
         </div>
