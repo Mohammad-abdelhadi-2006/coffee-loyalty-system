@@ -74,6 +74,7 @@ class PurchaseLine {
 /// One order in the history.
 class Purchase {
   const Purchase({
+    required this.number,
     required this.date,
     required this.status,
     required this.lines,
@@ -81,6 +82,14 @@ class Purchase {
     required this.pointsEarned,
     this.pointsSpent,
   });
+
+  /// The order's id, as the customer reads it out.
+  ///
+  /// The same figure the cashier types into the dashboard's order lookup, so it
+  /// stays in Western digits like every other number in this app — a customer
+  /// reading «١٢٣» off their screen could not be matched against a field that
+  /// parses `123`.
+  final String number;
 
   final String date;
   final OrderStatus status;
@@ -93,6 +102,7 @@ class Purchase {
 
   /// Builds a card from an order off the wire.
   factory Purchase.fromOrder(OrderResponse order) => Purchase(
+    number: order.orderId.toString(),
     date: formatArabicDate(order.createdAt),
     status: OrderStatus.fromWire(order.status),
     lines: order.items.map(PurchaseLine.fromItem).toList(growable: false),
@@ -219,12 +229,20 @@ class _PurchaseCard extends StatelessWidget {
         crossAxisAlignment: CrossAxisAlignment.stretch,
         children: [
           Row(
+            crossAxisAlignment: CrossAxisAlignment.start,
             children: [
               Expanded(
-                child: Text(
-                  purchase.date,
-                  style: AppText.rowLabelStrong,
-                  overflow: TextOverflow.ellipsis,
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(
+                      purchase.date,
+                      style: AppText.rowLabelStrong,
+                      overflow: TextOverflow.ellipsis,
+                    ),
+                    const SizedBox(height: 3),
+                    _OrderNumber(number: purchase.number),
+                  ],
                 ),
               ),
               const SizedBox(width: 12),
@@ -289,6 +307,35 @@ class _PurchaseCard extends StatelessWidget {
           ),
         ],
       ),
+    );
+  }
+}
+
+/// «طلب #14» — what the customer reads out when a cashier looks the order up.
+///
+/// Two Texts rather than one interpolated string, because `#` is a
+/// direction-neutral character: inside an RTL paragraph the bidi algorithm is
+/// free to resolve `#14` as `14#`, which is the one thing this label must never
+/// do. Pinning the number's own Text to LTR settles it, while the Row inherits
+/// the screen's RTL so the Arabic word still sits on the right.
+class _OrderNumber extends StatelessWidget {
+  const _OrderNumber({required this.number});
+
+  final String number;
+
+  @override
+  Widget build(BuildContext context) {
+    return Row(
+      mainAxisSize: MainAxisSize.min,
+      children: [
+        const Text('طلب', style: AppText.rowMeta),
+        const SizedBox(width: 4),
+        Text(
+          '#$number',
+          style: AppText.rowMeta,
+          textDirection: TextDirection.ltr,
+        ),
+      ],
     );
   }
 }

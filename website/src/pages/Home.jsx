@@ -12,8 +12,9 @@ import { Link } from 'react-router-dom'
 
 import { LuFlame, LuHouse, LuClock, LuCoffee, LuDroplets, LuSparkles } from 'react-icons/lu'
 import { motion } from 'motion/react';
+import { useLanguage } from '../context/LanguageContext.jsx'
 
-const bestSellers = [
+const bestSellerImages = [
   { id: 1, name: 'قهوة تركي ', price: '0.50 JD', img: turkishCoffeePic, tag: 'الأكثر مبيعا', about: 'ما بتنشرب على عجل. قهوة تركي بطعم مركّز ورغوة دافئة — للحظة بدك تاخدها على راحتك.' },
   { id: 2, name: 'آيس موكا', price: '2.00 JD', img: iceMochaPic, tag: 'ذات شعبية', about: 'إسبريسو داكن، شوكولاتة غنية، وحليب بارد على تلج. الحلا والقهوة بكوب واحد — بدون ما تختار بينهم.' },
   { id: 3, name: 'موهيتو', price: '1.75 JD', img: mojitoPic, tag: '', about: 'نعنع طازج ولمسة حامض على تلج مجروش.' },
@@ -21,16 +22,24 @@ const bestSellers = [
 
 ]
 function Home() {
+  const { translations } = useLanguage()
+  const bestSellers = bestSellerImages.map((item, index) => ({
+    ...item,
+    name: translations.home.bestSellers[index][0],
+    tag: translations.home.bestSellers[index][1],
+    about: translations.home.bestSellers[index][2],
+  }))
+
   return (
     <main>
       <section id="hero">
         <video src={HeroBG} autoPlay muted loop playsInline />
         <div id="hero-text">
-          <h1>قهوة طازجة لكل مزاج</h1>
-          <p>نكهات غنية وأجواء دافئة كل يوم.</p>
+          <h1>{translations.home.heroTitle}</h1>
+          <p>{translations.home.heroDescription}</p>
           <div className="hero-btn">
-            <Link to="/menu" className="btn-primary">المنيو</Link>
-            <Link to="/contact" className="btn-outline">موقعنا</Link>
+            <Link to="/menu" className="btn-primary">{translations.home.menuButton}</Link>
+            <Link to="/contact" className="btn-outline">{translations.home.locationButton}</Link>
           </div>
         </div>
       </section>
@@ -43,8 +52,8 @@ function Home() {
           viewport={{ once: true }}
           transition={{ duration: 0.5 }}>
           <span className="card-icon"><LuClock /></span>
-          <h3>خدمة سريعة و ودودة</h3>
-          <p>من الطلب الأول حتى الرشفة الاخيرة.<br /> نجعل كل زيارة سلسة و دافئة و لا <br />تنسى.</p>
+          <h3>{translations.home.quality[0][0]}</h3>
+          <p>{translations.home.quality[0][1]}</p>
         </motion.div>
 
         <motion.div
@@ -54,8 +63,8 @@ function Home() {
           viewport={{ once: true }}
           transition={{ duration: 0.5, delay: 0.15 }}>
           <span className="card-icon"><LuHouse /></span>
-          <h3>اجواء مقهى مريحة</h3>
-          <p>مساحة ترحيبية للاجتماعات ,و اللحظات الهادئة ,و الالتقاء بالاصدقاءعلى فنجان قهوة .</p>
+          <h3>{translations.home.quality[1][0]}</h3>
+          <p>{translations.home.quality[1][1]}</p>
         </motion.div>
 
         <motion.div
@@ -65,14 +74,14 @@ function Home() {
           viewport={{ once: true }}
           transition={{ duration: 0.5, delay: 0.3 }}>
           <span className="card-icon"><LuFlame /></span>
-          <h3>حبوب محمصة طازجة</h3>
-          <p>نختار حبوبا فاخرة و نحمصها بعناية لإبراز رائحة عميقة و نكهة قوية في كل كوب.</p>
+          <h3>{translations.home.quality[2][0]}</h3>
+          <p>{translations.home.quality[2][1]}</p>
         </motion.div>
       </section>
 
       <section className='crafted-coffee'>
-        <h2>تشكيلة قهوة مميزة</h2>
-        <p>من الإسبريسو القوي إلى الخلطات الكريمية الناعمة، خيارات تناسب كل ذوق.</p>
+        <h2>{translations.home.craftedTitle}</h2>
+        <p>{translations.home.craftedDescription}</p>
         <div className='card-container'>
           <motion.div
           className='card'
@@ -81,8 +90,8 @@ function Home() {
           viewport={{ once: true }}
           transition={{ duration: 0.5}}>
             <span className='card-icon'><LuCoffee /></span>
-            <h3>إسبريسو كلاسيكي</h3>
-            <p>خيارات جريئة وغنية لمحبّي الطعم القوي والأصيل.</p>
+            <h3>{translations.home.crafted[0][0]}</h3>
+            <p>{translations.home.crafted[0][1]}</p>
           </motion.div>
 
           <motion.div
@@ -92,8 +101,8 @@ function Home() {
           viewport={{ once: true }}
           transition={{ duration: 0.5, delay: 0.15 }}>
             <span className='card-icon'><LuDroplets /></span>
-            <h3>نكهات كريمية</h3>
-            <p>لاتيه وكابتشينو بقوام حليب حريري ونكهة متوازنة.</p>
+            <h3>{translations.home.crafted[1][0]}</h3>
+            <p>{translations.home.crafted[1][1]}</p>
           </motion.div>
 
           <motion.div
@@ -103,8 +112,8 @@ function Home() {
           viewport={{ once: true }}
           transition={{ duration: 0.5, delay: 0.3 }}>
             <span className='card-icon'><LuSparkles /></span>
-            <h3>خلطاتنا الخاصة</h3>
-            <p>وصفات خاصة من مطبخنا تمنحك تجربة فريدة في كل رشفة.</p>
+            <h3>{translations.home.crafted[2][0]}</h3>
+            <p>{translations.home.crafted[2][1]}</p>
           </motion.div>
         </div>
       </section>
@@ -114,16 +123,16 @@ function Home() {
           <img src={WhyUsPic} alt="" />
         </div>
         <div className="why-text">
-          <h2>كوب واحد بيغيّر يومك</h2>
-          <p>ما منحضّر قهوة بس. منحضّر اللحظة اللي بتوقف فيها شوي وتاخد نفس.<br /> تفضل, الكوب جاهز.</p>
+          <h2>{translations.home.whyTitle}</h2>
+          <p>{translations.home.whyDescription}</p>
           <div className="hero-btn">
-            <Link to="/menu" className="btn-primary">المنيو</Link>
+            <Link to="/menu" className="btn-primary">{translations.home.menuButton}</Link>
           </div>
         </div>
       </section>
 
       <section className='best-sellers'>
-        <h2>الأكثر مبيعا لدينا</h2>
+        <h2>{translations.home.bestSellersTitle}</h2>
         <ul className='card-container'>
           {bestSellers.map(item => (
             <li key={item.id}>

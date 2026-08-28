@@ -116,20 +116,20 @@ class SettingsScreen extends StatelessWidget {
                 HairlineList(
                   children: [
                     AppRow(
-                      label: 'كيف تكسب نقاط',
+                      label: 'كيف تكسب نقاط؟',
                       trailing: const _Chevron(),
                       onTap: () => Navigator.of(context).push(
                         MaterialPageRoute<void>(
-                          builder: (_) => const HowToEarnScreen(),
+                          builder: (_) => const HowToEarnPointsScreen(),
                         ),
                       ),
                     ),
                     AppRow(
-                      label: 'عن المقهى / تواصل',
+                      label: 'تواصل معنا',
                       trailing: const _Chevron(),
                       onTap: () => Navigator.of(context).push(
                         MaterialPageRoute<void>(
-                          builder: (_) => const AboutScreen(),
+                          builder: (_) => const ContactUsScreen(),
                         ),
                       ),
                     ),
