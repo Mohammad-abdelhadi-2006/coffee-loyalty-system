@@ -209,7 +209,7 @@ public sealed class AuthService : IAuthService
         {
             // First login creates the account, and Customer.FullName is NOT NULL —
             // the app must collect a name before exchanging the token.
-            throw ApiException.ValidationError("الاسم مطلوب عند تسجيل الدخول لأول مرة");
+            throw ApiException.NameRequired("الاسم مطلوب عند تسجيل الدخول لأول مرة");
         }
 
         customer = new Customer

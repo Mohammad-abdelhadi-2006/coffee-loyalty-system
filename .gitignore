@@ -433,6 +433,13 @@ FodyWeavers.xsd
 # environment variables (prod). See backend/README.md.
 # ---------------------------------------------------------------------------
 
+# Firebase client config. Generated per-project by `flutterfire configure`;
+# both carry API keys, so they stay out of the repo and each developer
+# regenerates them locally. See mobile/nakhat_finjan/README-firebase.md.
+**/google-services.json
+**/GoogleService-Info.plist
+**/firebase_options.dart
+
 # Firebase service-account JSON (private key inside)
 **/firebase-adminsdk*.json
 **/*firebase*service*account*.json

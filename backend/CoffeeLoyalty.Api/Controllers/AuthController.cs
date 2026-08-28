@@ -63,7 +63,7 @@ public class AuthController : ControllerBase
     /// <param name="cancellationToken">Cancellation token.</param>
     /// <returns>A JWT with role <c>customer</c>, the name, and the points balance.</returns>
     /// <response code="200">Authenticated; the customer was found or created.</response>
-    /// <response code="400">INVALID_PHONE or VALIDATION_ERROR.</response>
+    /// <response code="400">INVALID_PHONE, NAME_REQUIRED (first login with no name), or VALIDATION_ERROR.</response>
     /// <response code="401">INVALID_FIREBASE_TOKEN.</response>
     /// <response code="429">TOO_MANY_REQUESTS — too many failed attempts against this account.</response>
     [HttpPost("firebase-login")]

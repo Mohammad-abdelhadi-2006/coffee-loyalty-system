@@ -22,6 +22,9 @@ public static class ErrorMessages
     /// <summary>For <see cref="ErrorCodes.ValidationError"/>.</summary>
     public const string ValidationError = "البيانات المُرسلة غير صالحة";
 
+    /// <summary>For <see cref="ErrorCodes.NameRequired"/>.</summary>
+    public const string NameRequired = "الاسم مطلوب عند تسجيل الدخول لأول مرة";
+
     /// <summary>For <see cref="ErrorCodes.ProductNotFound"/>.</summary>
     public const string ProductNotFound = "المنتج غير موجود";
 
