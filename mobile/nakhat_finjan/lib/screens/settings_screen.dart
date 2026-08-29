@@ -243,13 +243,16 @@ class _Credits extends StatelessWidget {
     // TextSpan: a recognizer built here would never be disposed, and this keeps
     // the tap target to the name alone while padding it out to something a
     // thumb can actually hit.
+    // Wrap, not Row: the two pieces together are wider than a narrow phone, and a Row with
+    // MainAxisSize.min neither shrinks nor breaks — it just runs off the edge and paints the
+    // debug stripes. Wrap keeps them side by side wherever there is room and drops the name
+    // onto its own centred line where there is not.
     return Center(
-      child: Row(
-        mainAxisSize: MainAxisSize.min,
-        crossAxisAlignment: CrossAxisAlignment.baseline,
-        textBaseline: TextBaseline.alphabetic,
+      child: Wrap(
+        alignment: WrapAlignment.center,
+        crossAxisAlignment: WrapCrossAlignment.center,
         children: [
-          const Text('تطوير: ', style: AppText.rowMeta),
+          const Text('تم تطوير النظام بواسطة: ', style: AppText.rowMeta),
           GestureDetector(
             behavior: HitTestBehavior.opaque,
             onTap: () => _open(context),
