@@ -69,7 +69,7 @@ Every non-2xx response has exactly this body:
 | `PRODUCT_NOT_FOUND` | 404 | No active product with that id |
 | `PRODUCT_UNAVAILABLE` | 400 | Product exists but `IsAvailable = false` |
 | `INVALID_QUANTITY` | 400 | Quantity ≤ 0, or a count for a `Piece` product isn't a whole number |
-| `REDEEM_BELOW_MINIMUM` | 400 | `0 < pointsRedeemed < 250` (decision 9) |
+| `REDEEM_BELOW_MINIMUM` | 400 | `0 < pointsRedeemed < 200` (decision 9, minimum lowered by decision 43) |
 | `INSUFFICIENT_BALANCE` | 400 | `pointsRedeemed >` customer balance |
 | `REDEEM_EXCEEDS_TOTAL` | 400 | `pointsRedeemed / 100 >` order total (ERD constraint) |
 | `ORDER_NOT_FOUND` | 404 | No order with that id |

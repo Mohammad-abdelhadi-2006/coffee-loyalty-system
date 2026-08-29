@@ -111,13 +111,13 @@ class HowToEarnPointsScreen extends StatelessWidget {
           children: [
             _Body('لما توصل للعدد المطلوب بتستبدل نقاطك بمكافأة عند المحل.'),
             // ⟨FROM_BACKEND: real redemption rule⟩ — LoyaltyConstants.RedeemRate = 100
-            // (points per 1 JOD of discount) and MinRedeemPoints = 250, enforced in
-            // OrderService.ValidateRedemptionAndEarn: it throws RedeemBelowMinimum
-            // under 250, and RedeemExceedsTotal when
+            // (points per 1 JOD of discount) and MinRedeemPoints = 200 (decision 43,
+            // lowered from 250), enforced in OrderService.ValidateRedemptionAndEarn:
+            // it throws RedeemBelowMinimum under 200, and RedeemExceedsTotal when
             // `(decimal)pointsRedeemed / RedeemRate > total`.
             _Bullet(
-              'المكافأة: كل ١٠٠ نقطة = ١ دينار خصم على طلبك. أقل استبدال ٢٥٠ '
-              'نقطة (يعني ٢.٥ دينار)، وما بتقدر تستبدل نقاط بقيمة أكبر من قيمة '
+              'المكافأة: كل ١٠٠ نقطة = ١ دينار خصم على طلبك. أقل استبدال ٢٠٠ '
+              'نقطة (يعني ٢ دينار)، وما بتقدر تستبدل نقاط بقيمة أكبر من قيمة '
               'الطلب نفسه.',
             ),
             // ⟨FROM_BACKEND: redemption flow⟩ — there is no customer-side redeem

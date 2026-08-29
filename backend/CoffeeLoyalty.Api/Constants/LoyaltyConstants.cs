@@ -11,8 +11,8 @@ public static class LoyaltyConstants
     /// <summary>Points redeemed per 1 JOD of discount.</summary>
     public const int RedeemRate = 100;
 
-    /// <summary>Shop owner's minimum points per redemption.</summary>
-    public const int MinRedeemPoints = 250;
+    /// <summary>Shop owner's minimum points per redemption (decision 43 — lowered from 250).</summary>
+    public const int MinRedeemPoints = 200;
 
     /// <summary>Days a return or cancellation is accepted after the order (Jordan time).</summary>
     public const int ReturnWindowDays = 1;

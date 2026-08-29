@@ -93,7 +93,7 @@ erDiagram
 - **PointsTransaction.OrderId**: nullable **only** for `OpeningBalance`; NOT NULL for every other type, enforced by the check constraint `CK_PointsTransaction_Order` (`[Type] = 'OpeningBalance' OR [OrderId] IS NOT NULL`). Manual adjustments were removed by design (decisions.md #12), so the schema still forbids sourceless points movements — the one-time legacy import is the single documented exception (decisions.md #38, supersedes #10's NOT NULL rule).
 - **PointsTransaction.Type**: `Earn` / `Redeem` / `Refund` / `RedeemReversal` / `OpeningBalance`. `Refund` is always negative (clawing back earned points on return/cancellation); `RedeemReversal` is always positive (restoring spent points on cancellation); `OpeningBalance` is positive and appears at most once per customer (decisions.md #38). Kept as separate types so reports can distinguish them.
 - **PointsTransaction.Amount**: the sign reflects the effect on the balance (positive = increase, negative = decrease) — Type describes the reason, not the sign.
-- **Rates**: `PointsPerDinar = 3` (lowered from 5 — decisions.md #37), `RedeemRate = 100`, `MinRedeemPoints = 250`, and `ReturnWindowDays = 1` live in `LoyaltyConstants` — one place, not buried in formulas.
+- **Rates**: `PointsPerDinar = 3` (lowered from 5 — decisions.md #37), `RedeemRate = 100`, `MinRedeemPoints = 200` (lowered from 250 — decisions.md #43), and `ReturnWindowDays = 1` live in `LoyaltyConstants` — one place, not buried in formulas.
 - **CreatedAt** (Customer, Employee, Order, PointsTransaction): stored as `DateTimeOffset` (SQL Server `datetimeoffset`), not `DateTime`. The offset is preserved so an instant is unambiguous regardless of server timezone; return/cancellation windows are then compared in **Jordan time** by converting from the stored offset (see the Return window note above).
 - **Employee.IsActive**: defaults to true. Deactivating an employee
   (resignation/termination) is done via `IsActive = false` through
@@ -130,7 +130,7 @@ ALTER TABLE Orders ADD CONSTRAINT CK_Order_Points
 
 ### Redemption Constraints (validated at order creation)
 
-- `PointsRedeemed = 0` **or** `PointsRedeemed ≥ MinRedeemPoints (250)` — shop owner's minimum per redemption. Effectively no redemption on orders under 2.5 JOD — deliberate (encourages larger orders), not a bug. See decisions.md #9.
+- `PointsRedeemed = 0` **or** `PointsRedeemed ≥ MinRedeemPoints (200)` — shop owner's minimum per redemption. Effectively no redemption on orders under 2 JOD — deliberate (encourages larger orders), not a bug. See decisions.md #9, minimum lowered by #43.
 - `PointsRedeemed ≤ Customer.PointsBalance` — enforced via the conditional atomic UPDATE described in the PointsBalance note, not a separate pre-read check.
 - `PointsRedeemed / RedeemRate ≤ Total` — CashPaid can never go negative; otherwise the formulas above would produce a negative PointsEarned and the system would *deduct* points from a paying customer.
 

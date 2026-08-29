@@ -315,9 +315,9 @@ export default function Order() {
 
                 <div className="bill-foot">
 
-                    {customer && customer.pointsBalance >= 250 && (
+                    {customer && customer.pointsBalance >= 200 && (
                         <div className="input-row">
-                            <input type="text" placeholder="نقاط للاستبدال (٢٥٠ فأكثر)" value={redeem}
+                            <input type="text" placeholder="نقاط للاستبدال (٢٠٠ فأكثر)" value={redeem}
                                 onChange={e => setRedeem(e.target.value)} />
                             {kbdBtn('redeemPoints')}
                         </div>

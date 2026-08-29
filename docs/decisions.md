@@ -77,7 +77,8 @@
 
 ## 9. Points Formula: Earning & Redemption
 > **Partly superseded by Decision 37** — the earning rate is now 3 points per dinar.
-> Everything else below (redemption rate, minimum, earning on cash paid) still stands.
+> **Partly superseded by Decision 43** — the redemption minimum is now 200 points.
+> Everything else below (redemption rate, earning on cash paid) still stands.
 > The original text is kept unedited on purpose.
 
 - **Decision:** Earning: 5 points per dinar paid in cash, rounded down (floor). Redemption: every 100 points = 1 JOD. Minimum per redemption = 250 points; any amount at or above that is allowed. Points are earned on the cash paid after the points discount — not on the full invoice.
@@ -577,6 +578,9 @@
   first on screen, and would then fail every login the admin is sure they typed correctly.
 
 ## 37. Earning Rate Lowered: 5 → 3 Points per Dinar
+> **Partly superseded by Decision 43** — where this says the minimum is 250, it is now 200.
+> The original text is kept unedited on purpose.
+
 - **Decision:** Earning is **3 points per dinar of cash paid**, floored. `LoyaltyConstants.PointsPerDinar`
   goes from `5` to `3` and stays the single place the rate is written. Nothing else about the
   formula changes: redemption is still 100 points = 1 JOD with a 250-point minimum, and points
@@ -773,3 +777,26 @@
   than in the head of whoever configured it the first time. Auto-migrating on startup was
   rejected for the usual reason — it runs schema changes with no review, no backup step and no
   way to stop a bad one, on a database holding the shop's points liability.
+
+## 43. Redemption Minimum Lowered: 250 → 200 Points
+- **Decision:** The minimum per redemption is **200 points** (2 JOD of discount).
+  `LoyaltyConstants.MinRedeemPoints` goes from `250` to `200` and stays the single place the
+  rule is written. Nothing else about the formula changes: earning is still 3 points per dinar of
+  cash paid (Decision 37), redemption is still 100 points = 1 JOD, and a redemption still may not
+  exceed the order total.
+- **Supersedes:** the minimum in Decision 9, and the restatement of it in Decision 37. Both stay
+  on record with their original text.
+- **Rejected alternative:** Removing the minimum entirely / making it an admin-editable setting.
+- **Why:** Shop owner's request. The 250 minimum was set to keep trivial redemptions off the
+  till, and 200 still does that while putting a reward within reach of more customers — of the
+  67 paper-card balances imported in Phase 6, 250 left 10 able to redeem today and 200 leaves
+  14. It stays a compile-time constant for the same reason the earning rate does: a threshold
+  that changes mid-shift makes two orders in the same shift irreproducible.
+- **Documented note:** Lowering a minimum is the safe direction to move it. No existing balance
+  is devalued and no past order is recalculated (Decision 22) — the change only widens what is
+  allowed, so nothing that was previously a valid redemption becomes invalid.
+- **Consequence:** The rule was duplicated by hand in two places that do not read the constant —
+  `dashboard/src/pages/Order.jsx` (the `pointsBalance >= 200` guard and its Arabic
+  placeholder) and the customer copy in `mobile/.../info_screens.dart`. Both were updated with
+  this decision. Neither is wired to `LoyaltyConstants`, so a future change to this number has
+  to touch them too.
