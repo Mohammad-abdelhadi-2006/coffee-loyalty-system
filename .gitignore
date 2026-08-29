@@ -55,8 +55,16 @@ bld/
 
 # Visual Studio 2015/2017 cache/options directory
 .vs/
-# Uncomment if you have tasks that create the project's static files in wwwroot
-#wwwroot/
+# The dashboard's build output. `npm run build` in dashboard/ writes the compiled bundle
+# straight here (see dashboard/vite.config.js), so it is generated, never authored — and
+# committing it would mean reviewing a minified diff on every dashboard change.
+backend/CoffeeLoyalty.Api/wwwroot/
+
+# Customer data. This repository is public (decisions.md #4), and the opening-balance import
+# is a list of 67 real phone numbers each paired with what that person had spent. Publishing
+# it would expose the shop's customers, so the script is kept with whoever runs the deploy
+# and never committed. docs/DEPLOYMENT.md §8 says where it lives.
+docs/import-opening-balances.sql
 
 # Visual Studio 2017 auto generated files
 Generated\ Files/
