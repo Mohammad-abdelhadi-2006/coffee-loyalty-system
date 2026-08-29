@@ -8,21 +8,44 @@ import galleryPic1 from '../assets/images/galleryPic1.png'
 import galleryPic2 from '../assets/images/galleryPic2.png'
 import galleryPic3 from '../assets/images/galleryPic3.png'
 import galleryPic4 from '../assets/images/galleryPic4.png'
-import { Link } from 'react-router-dom'
 
-import { LuFlame, LuHouse, LuClock, LuCoffee, LuDroplets, LuSparkles } from 'react-icons/lu'
-import { motion } from 'motion/react';
+import { Link } from 'react-router-dom'
+import { motion } from 'motion/react'
+import {
+  LuFlame,
+  LuHouse,
+  LuClock,
+  LuCoffee,
+  LuDroplets,
+  LuSparkles,
+} from 'react-icons/lu'
 import { useLanguage } from '../context/LanguageContext.jsx'
 
 const bestSellerImages = [
-  { id: 1, name: 'قهوة تركي ', price: '0.50 JD', img: turkishCoffeePic, tag: 'الأكثر مبيعا', about: 'ما بتنشرب على عجل. قهوة تركي بطعم مركّز ورغوة دافئة — للحظة بدك تاخدها على راحتك.' },
-  { id: 2, name: 'آيس موكا', price: '2.00 JD', img: iceMochaPic, tag: 'ذات شعبية', about: 'إسبريسو داكن، شوكولاتة غنية، وحليب بارد على تلج. الحلا والقهوة بكوب واحد — بدون ما تختار بينهم.' },
-  { id: 3, name: 'موهيتو', price: '1.75 JD', img: mojitoPic, tag: '', about: 'نعنع طازج ولمسة حامض على تلج مجروش.' },
-  { id: 4, name: 'ميلك شيك - فراولة', price: '2.00 JD', img: milkshakeStrawberryPic, tag: '', about: 'باشن فروت وحليب مخفوق لقوام مخملي — حلو، حامض، وبارد بنفس الرشفة.' }
-
+  {
+    id: 1,
+    img: turkishCoffeePic,
+  },
+  {
+    id: 2,
+    img: iceMochaPic,
+  },
+  {
+    id: 3,
+    img: mojitoPic,
+  },
+  {
+    id: 4,
+    img: milkshakeStrawberryPic,
+  },
 ]
+
+const qualityIcons = [LuClock, LuHouse, LuFlame]
+const craftedIcons = [LuCoffee, LuDroplets, LuSparkles]
+
 function Home() {
   const { translations } = useLanguage()
+
   const bestSellers = bestSellerImages.map((item, index) => ({
     ...item,
     name: translations.home.bestSellers[index][0],
@@ -31,127 +54,193 @@ function Home() {
   }))
 
   return (
-    <main>
-      <section id="hero">
-        <video src={HeroBG} autoPlay muted loop playsInline />
-        <div id="hero-text">
+    <main className="home-page">
+      {/* Hero */}
+      <section className="home-hero">
+        <video
+          className="home-hero-video"
+          src={HeroBG}
+          autoPlay
+          muted
+          loop
+          playsInline
+        />
+
+        <div className="home-hero-overlay" />
+
+        <div className="hero-text">
+          <span className="hero-eyebrow">✦ EST. WITH CARE</span>
+
           <h1>{translations.home.heroTitle}</h1>
+
           <p>{translations.home.heroDescription}</p>
-          <div className="hero-btn">
-            <Link to="/menu" className="btn-primary">{translations.home.menuButton}</Link>
-            <Link to="/contact" className="btn-outline">{translations.home.locationButton}</Link>
+
+          <div className="hero-buttons">
+            <Link to="/menu" className="home-btn home-btn-primary">
+              {translations.home.menuButton}
+              <span>→</span>
+            </Link>
+
+            <Link to="/contact" className="home-btn home-btn-outline">
+              {translations.home.locationButton}
+            </Link>
           </div>
         </div>
+
+        <div className="hero-corner-decoration" />
       </section>
 
-      <section className='quality'>
-        <motion.div
-          className='card'
-          initial={{ opacity: 0, y: 100 }}
-          whileInView={{ opacity: 1, y: 0 }}
-          viewport={{ once: true }}
-          transition={{ duration: 0.5 }}>
-          <span className="card-icon"><LuClock /></span>
-          <h3>{translations.home.quality[0][0]}</h3>
-          <p>{translations.home.quality[0][1]}</p>
-        </motion.div>
+      {/* Quality */}
+      <section className="quality-section">
+        {translations.home.quality.map(([title, description], index) => {
+          const Icon = qualityIcons[index]
 
-        <motion.div
-          className='card'
-          initial={{ opacity: 0, y: 100 }}
-          whileInView={{ opacity: 1, y: 0 }}
-          viewport={{ once: true }}
-          transition={{ duration: 0.5, delay: 0.15 }}>
-          <span className="card-icon"><LuHouse /></span>
-          <h3>{translations.home.quality[1][0]}</h3>
-          <p>{translations.home.quality[1][1]}</p>
-        </motion.div>
+          return (
+            <motion.article
+              className="quality-card"
+              key={title}
+              initial={{ opacity: 0, y: 40 }}
+              whileInView={{ opacity: 1, y: 0 }}
+              viewport={{ once: true, amount: 0.2 }}
+              transition={{
+                duration: 0.5,
+                delay: index * 0.12,
+              }}
+            >
+              <span className="home-card-icon">
+                <Icon />
+              </span>
 
-        <motion.div
-          className='card'
-          initial={{ opacity: 0, y: 100 }}
-          whileInView={{ opacity: 1, y: 0 }}
-          viewport={{ once: true }}
-          transition={{ duration: 0.5, delay: 0.3 }}>
-          <span className="card-icon"><LuFlame /></span>
-          <h3>{translations.home.quality[2][0]}</h3>
-          <p>{translations.home.quality[2][1]}</p>
-        </motion.div>
+              <h3>{title}</h3>
+              <p>{description}</p>
+            </motion.article>
+          )
+        })}
       </section>
 
-      <section className='crafted-coffee'>
-        <h2>{translations.home.craftedTitle}</h2>
-        <p>{translations.home.craftedDescription}</p>
-        <div className='card-container'>
-          <motion.div
-          className='card'
-          initial={{ opacity: 0, x: 100 }}
-          whileInView={{ opacity: 1, x: 0 }}
-          viewport={{ once: true }}
-          transition={{ duration: 0.5}}>
-            <span className='card-icon'><LuCoffee /></span>
-            <h3>{translations.home.crafted[0][0]}</h3>
-            <p>{translations.home.crafted[0][1]}</p>
-          </motion.div>
+      {/* Crafted coffee */}
+      <section className="crafted-section">
+        <div className="section-heading">
+          <span className="section-eyebrow">OUR PROMISE</span>
 
-          <motion.div
-          className='card'
-          initial={{ opacity: 0, x: 100 }}
-          whileInView={{ opacity: 1, x: 0 }}
-          viewport={{ once: true }}
-          transition={{ duration: 0.5, delay: 0.15 }}>
-            <span className='card-icon'><LuDroplets /></span>
-            <h3>{translations.home.crafted[1][0]}</h3>
-            <p>{translations.home.crafted[1][1]}</p>
-          </motion.div>
+          <h2>{translations.home.craftedTitle}</h2>
 
-          <motion.div
-          className='card'
-          initial={{ opacity: 0, x: 100 }}
-          whileInView={{ opacity: 1, x: 0 }}
-          viewport={{ once: true }}
-          transition={{ duration: 0.5, delay: 0.3 }}>
-            <span className='card-icon'><LuSparkles /></span>
-            <h3>{translations.home.crafted[2][0]}</h3>
-            <p>{translations.home.crafted[2][1]}</p>
-          </motion.div>
+          <p>{translations.home.craftedDescription}</p>
+        </div>
+
+        <div className="crafted-cards">
+          {translations.home.crafted.map(([title, description], index) => {
+            const Icon = craftedIcons[index]
+
+            return (
+              <motion.article
+                className="crafted-card"
+                key={title}
+                initial={{ opacity: 0, y: 35 }}
+                whileInView={{ opacity: 1, y: 0 }}
+                viewport={{ once: true, amount: 0.2 }}
+                transition={{
+                  duration: 0.5,
+                  delay: index * 0.12,
+                }}
+              >
+                <span className="home-card-icon">
+                  <Icon />
+                </span>
+
+                <h3>{title}</h3>
+                <p>{description}</p>
+              </motion.article>
+            )
+          })}
         </div>
       </section>
 
-      <section className='why-us'>
-        <div>
-          <img src={WhyUsPic} alt="" />
-        </div>
-        <div className="why-text">
+      {/* Why us */}
+      <section className="why-section">
+        <motion.div
+          className="why-image-wrapper"
+          initial={{ opacity: 0, x: -40 }}
+          whileInView={{ opacity: 1, x: 0 }}
+          viewport={{ once: true, amount: 0.2 }}
+          transition={{ duration: 0.6 }}
+        >
+          <img src={WhyUsPic} alt={translations.home.whyTitle} />
+        </motion.div>
+
+        <motion.div
+          className="why-content"
+          initial={{ opacity: 0, x: 40 }}
+          whileInView={{ opacity: 1, x: 0 }}
+          viewport={{ once: true, amount: 0.2 }}
+          transition={{ duration: 0.6, delay: 0.1 }}
+        >
+          <span className="section-eyebrow">WHY CHOOSE US</span>
+
           <h2>{translations.home.whyTitle}</h2>
+
           <p>{translations.home.whyDescription}</p>
-          <div className="hero-btn">
-            <Link to="/menu" className="btn-primary">{translations.home.menuButton}</Link>
-          </div>
-        </div>
+
+          <Link to="/menu" className="home-btn home-btn-dark">
+            {translations.home.menuButton}
+            <span>→</span>
+          </Link>
+        </motion.div>
       </section>
 
-      <section className='best-sellers'>
-        <h2>{translations.home.bestSellersTitle}</h2>
-        <ul className='card-container'>
-          {bestSellers.map(item => (
-            <li key={item.id}>
-              <img src={item.img} alt={item.name} />
-              <div className='bestSellers-cardInfo'>
-                <div className='namePrice-bestSellers'>
+      {/* Best sellers */}
+      <section className="best-sellers-section">
+        <div className="section-heading">
+          <span className="section-eyebrow">FAVORITES</span>
+
+          <h2>{translations.home.bestSellersTitle}</h2>
+        </div>
+
+        <ul className="best-sellers-grid">
+          {bestSellers.map((item, index) => (
+            <motion.li
+              className="best-seller-card"
+              key={item.id}
+              initial={{ opacity: 0, y: 30 }}
+              whileInView={{ opacity: 1, y: 0 }}
+              viewport={{ once: true, amount: 0.2 }}
+              transition={{
+                duration: 0.45,
+                delay: index * 0.08,
+              }}
+            >
+              <div className="best-seller-image">
+                <img src={item.img} alt={item.name} />
+              </div>
+
+              <div className="best-seller-info">
+                <div className="best-seller-title">
                   <h3>{item.name}</h3>
                   <span>{item.price}</span>
                 </div>
-                <span className='tag'>{item.tag}</span>
+
+                {item.tag && (
+                  <span className="best-seller-tag">
+                    {item.tag}
+                  </span>
+                )}
+
                 <p>{item.about}</p>
               </div>
-            </li>
+            </motion.li>
           ))}
         </ul>
       </section>
 
-      <section className='gallery'>
-        <div className='galleryPic'>
+      {/* Gallery */}
+      <section className="home-gallery">
+        <div className="gallery-heading">
+          <span>✦</span>
+          <p>Moments worth slowing down for</p>
+          <span>✦</span>
+        </div>
+
+        <div className="gallery-grid">
           <img src={galleryPic1} alt="" />
           <img src={galleryPic2} alt="" />
           <img src={galleryPic3} alt="" />
