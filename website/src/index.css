@@ -1495,6 +1495,238 @@ footer .logo-link {
   }
 }
 
+/* أزرار اختيار الصنف داخل رأس الصفحة */
+.menu-category-nav {
+  position: relative;
+  z-index: 2;
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: center;
+  gap: 0.65rem;
+  max-width: 980px;
+  margin-top: 1rem;
+}
+
+.menu-category-button {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 0.45rem;
+  min-height: 40px;
+  padding: 0.55rem 0.9rem;
+  border: 1px solid rgba(255, 239, 204, 0.28);
+  border-radius: 999px;
+  background: rgba(255, 249, 237, 0.06);
+  color: rgba(255, 249, 237, 0.84);
+  font-family: inherit;
+  font-size: 0.82rem;
+  cursor: pointer;
+  transition:
+    background-color 0.25s ease,
+    border-color 0.25s ease,
+    color 0.25s ease,
+    transform 0.25s ease;
+}
+
+.menu-category-button:hover {
+  border-color: #d9ad6d;
+  background: rgba(217, 173, 109, 0.16);
+  color: #fff9ed;
+  transform: translateY(-2px);
+}
+
+.menu-category-button.active {
+  border-color: #f8f0df;
+  background: #f8f0df;
+  color: var(--broun, #493124);
+}
+
+/* أيقونة الصنف على يمين عنوان كل قسم */
+.category-heading {
+  direction: rtl;
+}
+
+.category-heading-main {
+  display: flex;
+  flex: 0 0 auto;
+  align-items: center;
+  gap: 0.8rem;
+}
+
+.category-icon {
+  display: grid;
+  flex: 0 0 auto;
+  place-items: center;
+  width: 54px;
+  height: 54px;
+  border: 1px solid rgba(189, 138, 75, 0.32);
+  border-radius: 50%;
+  background: rgba(189, 138, 75, 0.13);
+  color: #a66f32;
+}
+
+.category-heading .category-number {
+  flex: 0 0 auto;
+}
+
+@media (max-width: 700px) {
+  .menu-category-nav {
+    gap: 0.5rem;
+    margin-top: 0.7rem;
+  }
+
+  .menu-category-button {
+    min-height: 37px;
+    padding: 0.45rem 0.7rem;
+    font-size: 0.76rem;
+  }
+
+  .category-heading-main {
+    gap: 0.6rem;
+  }
+
+  .category-icon {
+    width: 46px;
+    height: 46px;
+  }
+}
+
+@media (max-width: 420px) {
+  .menu-category-nav {
+    max-width: 300px;
+  }
+
+  .category-icon {
+    width: 42px;
+    height: 42px;
+  }
+}
+
+/* التصنيفات جزء من محتوى الصفحة، وليست جزءًا من الترويسة */
+.menu-section .menu-category-nav {
+  position: relative;
+  z-index: 2;
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: center;
+  gap: 0.65rem;
+  max-width: 980px;
+  margin: 0 auto 3.8rem;
+  padding: 0.8rem;
+  border: 1px solid rgba(94, 65, 43, 0.1);
+  border-radius: 18px;
+  background: rgba(247, 240, 234, 0.7);
+}
+
+.menu-section .menu-category-button {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 0.45rem;
+  min-height: 40px;
+  padding: 0.55rem 0.9rem;
+  border: 1px solid rgba(166, 111, 50, 0.25);
+  border-radius: 999px;
+  background: transparent;
+  color: var(--text-on-light, #695648);
+  font-family: inherit;
+  font-size: 0.82rem;
+  cursor: pointer;
+  transition:
+    background-color 0.25s ease,
+    border-color 0.25s ease,
+    color 0.25s ease,
+    transform 0.25s ease;
+}
+
+.menu-section .menu-category-button:hover {
+  border-color: #bd8a4b;
+  background: rgba(189, 138, 75, 0.1);
+  color: var(--title-on-light, #3b291f);
+  transform: translateY(-2px);
+}
+
+.menu-section .menu-category-button.active {
+  border-color: var(--broun, #493124);
+  background: var(--broun, #493124);
+  color: var(--title-on-dark, #fff9ed);
+}
+
+/* إزالة أرقام التصنيفات والبطاقات */
+.menu-section .category-number,
+.menu-section .item-number {
+  display: none;
+}
+
+/* أيقونة خاصة داخل كل بطاقة */
+.menu-section .menu-item {
+  direction: rtl;
+  align-items: flex-start;
+}
+
+.menu-item-icon {
+  position: relative;
+  z-index: 1;
+  display: grid;
+  flex: 0 0 auto;
+  place-items: center;
+  width: 54px;
+  height: 54px;
+  border: 1px solid rgba(189, 138, 75, 0.32);
+  border-radius: 50%;
+  background: rgba(189, 138, 75, 0.13);
+  color: #a66f32;
+}
+
+.menu-section .item-info {
+  text-align: right;
+}
+
+.menu-section .name-price {
+  direction: rtl;
+}
+
+.menu-section .category-heading {
+  direction: rtl;
+}
+
+.menu-section .category-heading h2 {
+  flex: 0 0 auto;
+}
+
+.menu-section .category-heading .category-line {
+  margin-right: 0.4rem;
+  margin-left: 0;
+}
+
+@media (max-width: 700px) {
+  .menu-section .menu-category-nav {
+    gap: 0.5rem;
+    margin-bottom: 3rem;
+  }
+
+  .menu-section .menu-category-button {
+    min-height: 37px;
+    padding: 0.45rem 0.7rem;
+    font-size: 0.76rem;
+  }
+
+  .menu-item-icon {
+    width: 46px;
+    height: 46px;
+  }
+}
+
+@media (max-width: 420px) {
+  .menu-section .menu-category-nav {
+    max-width: 300px;
+  }
+
+  .menu-item-icon {
+    width: 42px;
+    height: 42px;
+  }
+}
 /* ---------------------- Contact Page ---------------------- */
 
 .contact-page {
