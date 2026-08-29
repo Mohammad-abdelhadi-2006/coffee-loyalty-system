@@ -13,10 +13,13 @@ class Config {
   ///
   /// Variants — swap this one line per environment:
   ///
+  ///   Production                       https://nakhatfinjan.com   <- current
   ///   Android emulator (host machine)  http://10.0.2.2:5286
   ///   iOS simulator / desktop / web    http://localhost:5286
   ///   Physical device on the same LAN  http://192.168.1.x:5286   <- your PC's IPv4
-  ///   Production                       https://api.nakhatfinjan.com
+  ///
+  /// There is no api. subdomain: the API and the dashboard are one site, the API
+  /// under /api and the dashboard under /dashboard, so the host alone is the base.
   ///
   /// Notes:
   ///  - Run the API with the `http` profile (`dotnet run --launch-profile http`)
@@ -26,5 +29,5 @@ class Config {
   ///  - A physical device cannot reach `localhost` or `10.0.2.2` — those are the
   ///    emulator's own loopback. Use the LAN IP and make sure the API listens on
   ///    it (`dotnet run --urls http://0.0.0.0:5286`).
-  static const String baseUrl = 'http://10.0.2.2:5286';
+  static const String baseUrl = 'https://nakhatfinjan.com';
 }
