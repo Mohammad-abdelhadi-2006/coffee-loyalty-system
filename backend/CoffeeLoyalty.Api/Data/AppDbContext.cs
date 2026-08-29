@@ -143,11 +143,26 @@ public class AppDbContext : DbContext
             .HasFilter("[Type] <> 'Refund' AND [OrderId] IS NOT NULL")
             .HasDatabaseName("UX_PointsTransaction_Order_Type");
 
-        // TODO (Phase 6 — build with the opening-balance import, not before): add a filtered unique
-        // index on CustomerId with filter "[Type] = 'OpeningBalance'", so the DB refuses a second
-        // opening balance for a customer even if two concurrent import runs both pass the app-level
-        // "already imported?" check. That check is a TOCTOU race; the index is the real guarantee.
-        // See decisions.md #38.
+        // At most one opening balance per customer, ever (decisions.md #38, whose TODO this
+        // discharges — built now because the paper-card import has arrived and this is the run
+        // it guards). An importer that checks "already imported?" and then inserts is a TOCTOU
+        // race: two runs can both read "no" before either writes. This index is what actually
+        // refuses the second row, so a re-run doubles nobody's balance.
+        // Both indexes on CustomerId are spelled out, and both are needed.
+        //
+        // The plain one is what the foreign key would have got by convention — but the
+        // convention only supplies it while nothing else covers the column, and the filtered
+        // index below counts as covering it. Declaring the filtered one alone therefore
+        // *removes* the plain index, and the customer's own ledger
+        // (GET /api/customers/me/transactions) reads by CustomerId with no type filter, so it
+        // would fall back to a scan. Naming both keeps them as two separate indexes.
+        modelBuilder.Entity<PointsTransaction>()
+            .HasIndex(pt => pt.CustomerId, "IX_PointsTransactions_CustomerId");
+
+        modelBuilder.Entity<PointsTransaction>()
+            .HasIndex(pt => pt.CustomerId, "UX_PointsTransaction_Customer_OpeningBalance")
+            .IsUnique()
+            .HasFilter("[Type] = 'OpeningBalance'");
 
         // Daily sales reports filter on the order date.
         modelBuilder.Entity<Order>()

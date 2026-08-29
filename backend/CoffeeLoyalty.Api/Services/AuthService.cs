@@ -193,10 +193,22 @@ public sealed class AuthService : IAuthService
 
         if (customer is not null)
         {
-            // A cashier may have registered this customer by phone only (blank name).
-            // The app collects the name on first login; fill it in here when it is still blank.
-            if (string.IsNullOrWhiteSpace(customer.FullName) && !string.IsNullOrWhiteSpace(fullName))
+            // A customer can exist with no name: a cashier registering them by phone
+            // alone, and every row of the opening-balance import, which had phone
+            // numbers and balances but no names (decision 38).
+            //
+            // Such a row still needs a name, and the only place to ask is the app on
+            // this customer's first login — so a blank name asks for one exactly the
+            // way a brand-new account does, rather than letting them in nameless. It
+            // is asked once: the next login finds the name filled and never sees this.
+            if (string.IsNullOrWhiteSpace(customer.FullName))
             {
+                if (string.IsNullOrWhiteSpace(fullName))
+                {
+                    throw ApiException.NameRequired(
+                        "الاسم مطلوب عند تسجيل الدخول لأول مرة");
+                }
+
                 customer.FullName = fullName.Trim();
             }
 
