@@ -4,13 +4,16 @@ import Keyboard from '../components/keyboard.jsx'
 import { FIELDS } from '../constants/fields.js'
 import { getEmployees, createEmployee, setEmployeeStatus } from '../api/employees.js'
 
+/* Default empty form structure for creating a new staff member */
 const EMPTY = { fullName: '', username: '', password: '', role: 'cashier' }
 
+/* Role selection options available within the system */
 const ROLES = [
   { key: 'cashier', label: 'cashier' },
   { key: 'admin',   label: 'admin' },
 ]
 
+/* Admin component for viewing, creating, and toggling employee active statuses */
 export default function Employees({ session }) {
   const [list, setList]       = useState([])
   const [loading, setLoading] = useState(true)
@@ -22,6 +25,7 @@ export default function Employees({ session }) {
 
   const [openField, setOpenField] = useState(null)
 
+  /* Fetches employee list from backend API on initial render */
   const load = async () => {
     try {
       setList(await getEmployees())
@@ -34,16 +38,20 @@ export default function Employees({ session }) {
 
   useEffect(() => { load() }, [])
 
+  /* Helper to update individual key-value pairs inside the form state */
   const setField = (k, v) => setForm({ ...form, [k]: v })
 
+  /* Maps virtual keyboard fields to their target form values and setter functions */
   const inputs = {
     employeeName: { value: form?.fullName ?? '', set: v => setField('fullName', v) },
     newUsername:  { value: form?.username ?? '', set: v => setField('username', v) },
     newPassword:  { value: form?.password ?? '', set: v => setField('password', v) },
   }
 
+  /* Checks if the listed employee matches the currently logged-in admin */
   const isMe = (e) => e.username === session.username
 
+  /* Validates input and triggers employee creation API request */
   const save = async () => {
     if (!form.fullName.trim())   return setFormErr('لازم تكتب الاسم الكامل')
     if (!form.username.trim())   return setFormErr('لازم تكتب اسم المستخدم')
@@ -66,6 +74,7 @@ export default function Employees({ session }) {
     }
   }
 
+  /* Toggles employee active/disabled status and updates state locally */
   const toggle = async (e) => {
     try {
       const updated = await setEmployeeStatus(e.id, !e.isActive)
@@ -75,6 +84,7 @@ export default function Employees({ session }) {
     }
   }
 
+  /* Renders the trigger button to launch the virtual touch keyboard for a field */
   const kbdBtn = (name) => (
     <button type="button" className="kbd-btn" tabIndex={-1}
             onClick={() => setOpenField(name)}>

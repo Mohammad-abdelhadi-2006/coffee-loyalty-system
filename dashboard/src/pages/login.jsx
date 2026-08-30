@@ -5,6 +5,7 @@ import Keyboard from '../components/keyboard.jsx'
 import { FIELDS } from '../constants/fields.js'
 import { login } from '../api/auth.js'
 
+/* Login screen component providing form inputs, touch keyboard integration, and auth requests */
 export default function Login({ onDone }) {
   const [username, setUsername]   = useState('')
   const [password, setPassword]   = useState('')
@@ -12,6 +13,7 @@ export default function Login({ onDone }) {
   const [error, setError]         = useState('')
   const [loading, setLoading]     = useState(false)
 
+  /* Validates form entries and dispatches credentials to authentication API */
   const submit = async (e) => {
     e.preventDefault()
 

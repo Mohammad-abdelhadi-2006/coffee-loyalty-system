@@ -8,9 +8,31 @@ import { CATEGORY_ICON } from '../constants/categoryIcons.js'
 import { findByPhone, createCustomer } from '../api/customers.js'
 import { CATEGORIES } from '../constants/catalog.js'
 
+/* 
+
+ * Combines the static default 'all' category tab with the store's full catalog 
+ * categories list imported from catalog constants. This array drives the top 
+ * navigation menu for fast product filtering.
+ */
 const TABS = [{ key: 'all', label: 'الكل' }, ...CATEGORIES]
 
+/* 
+ * ============================================================================
+ * MAIN COMPONENT: Order
+ * ============================================================================
+ * The primary Point-of-Sale (POS) view component for cashiers. It handles real-time 
+ * product lookup, interactive weighted-item calculations, customer loyalty point 
+ * redemption, shopping cart manipulation, and order placement.
+ */
 export default function Order() {
+    /* 
+
+     * Manages all operational states required for the order terminal, including:
+     * - Products catalog and loading/error states.
+     * - Active search queries and category tab selections.
+     * - Active customer session and loyalty metrics.
+     * - Cart items, discounts, weighing modal inputs, and touch keyboard controls.
+     */
     const [products, setProducts] = useState([])
     const [loading, setLoading] = useState(true)
     const [loadErr, setLoadErr] = useState('')
@@ -42,7 +64,10 @@ export default function Order() {
 
     const [openField, setOpenField] = useState(null)
 
-
+    /*
+     * Fetches the complete products catalog from the server on component mount.
+     * Handles network errors gracefully and clears loading flags upon completion.
+     */
     useEffect(() => {
         async function load() {
             try {
@@ -56,6 +81,12 @@ export default function Order() {
         load()
     }, [])
 
+    /* 
+
+     * Dynamically filters available product cards according to the selected category 
+     * tab and text search input. Simultaneously computes total bill cost, point-to-cash 
+     * conversion discounts (100 points = 1 JOD), and the net cash amount payable.
+     */
     const visible = products.filter(p =>
         (category === 'all' || p.category === category) &&
         p.name.includes(search.trim())
@@ -66,6 +97,11 @@ export default function Order() {
     const discount = points / 100
     const cashPaid = Math.max(0, total - discount)
 
+    /* 
+
+     * Contains methods for retrieving customer profiles via phone number and registering 
+     * new customers directly from the cashier screen when a search yields no results.
+     */
     const searchCustomer = async () => {
         if (!phone.trim()) return
         setCustErr('')
@@ -80,6 +116,39 @@ export default function Order() {
         }
     }
 
+    const openNewCust = () => {
+        setNName('')
+        setNPhone(phone.trim())
+        setNErr('')
+        setNewCust(true)
+    }
+
+    const saveNewCust = async () => {
+        if (!nName.trim() || !nPhone.trim()) {
+            setNErr('لازم تعبّي الاسم ورقم الهاتف')
+            return
+        }
+        setNErr('')
+        setNSaving(true)
+        try {
+            const c = await createCustomer(nName.trim(), nPhone.trim())
+            setCustomer(c)
+            setCustErr('')
+            setPhone(c.phoneNumber)
+            setNewCust(false)
+        } catch (e) {
+            setNErr(e.message)
+        } finally {
+            setNSaving(false)
+        }
+    }
+
+    /* 
+
+     * Provides bidirectional real-time recalculation between weight in Kilograms 
+     * and monetary value in JOD. When a cashier types a weight, it computes total price; 
+     * when typing a price amount, it computes the exact weight equivalent.
+     */
     const onKg = (v) => {
         setWKg(v)
         const n = Number(v)
@@ -114,33 +183,12 @@ export default function Order() {
         setWeighing(null)
     }
 
-    const openNewCust = () => {
-        setNName('')
-        setNPhone(phone.trim())
-        setNErr('')
-        setNewCust(true)
-    }
+    /* 
 
-    const saveNewCust = async () => {
-        if (!nName.trim() || !nPhone.trim()) {
-            setNErr('لازم تعبّي الاسم ورقم الهاتف')
-            return
-        }
-        setNErr('')
-        setNSaving(true)
-        try {
-            const c = await createCustomer(nName.trim(), nPhone.trim())
-            setCustomer(c)
-            setCustErr('')
-            setPhone(c.phoneNumber)
-            setNewCust(false)
-        } catch (e) {
-            setNErr(e.message)
-        } finally {
-            setNSaving(false)
-        }
-    }
-
+     * Handles item addition to cart (routing weighted items to weighing modal), 
+     * quantity incrementing/decrementing, item removal, cart resets, and sending 
+     * the finalized payload to the API server.
+     */
     const inputs = {
         customerPhone: { value: phone, set: setPhone },
         customerName: { value: nName, set: setNName },
@@ -167,6 +215,7 @@ export default function Order() {
             .map(i => i.id === id ? { ...i, qty: i.qty + dir } : i)
             .filter(i => i.qty > 0))
     }
+
     const removeItem = (id) => setCart(cart.filter(i => i.id !== id))
 
     const reset = () => {
@@ -339,6 +388,7 @@ export default function Order() {
 
                 </div>
             </aside>
+
             {newCust && (
                 <div className="modal-bg">
                     <div className="modal">
@@ -417,6 +467,7 @@ export default function Order() {
                     </div>
                 </div>
             )}
+
             {result && (
                 <div className="modal-bg">
                     <div className="modal">

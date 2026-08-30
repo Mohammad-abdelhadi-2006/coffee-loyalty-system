@@ -1,24 +1,32 @@
 import { ARABIC, ENGLISH, NUMBERS } from './keyboardLayouts.js'
 import { useState } from 'react'
 
+/*
+ * Virtual touch keyboard component designed for POS terminals.
+ * Accepts target input value, change handler, mode configurations, and close callback.
+ */
 export default function Keyboard({ value, onChange, config, onClose }) {
   const [mode, setMode] = useState(config.mode)
   const [shift, setShift] = useState(false)
 
-  // اختيار التخطيط حسب الوضع الحالي
+  /* Selects the appropriate character set array based on the active keyboard mode */
   let rows = NUMBERS
   if (mode === 'ar') rows = ARABIC
   if (mode === 'en') rows = ENGLISH
 
+  /* Appends clicked character to input value and resets shift toggle */
   const press = (ch) => {
     onChange(value + ch)
     if (shift) setShift(false)
   }
 
+  /* Deletes the last entered character from the string */
   const back  = () => onChange(value.slice(0, -1))
+
+  /* Resets and clears the input value completely */
   const clear = () => onChange('')
 
-  // منع سحب التركيز من الحقل
+  /* Prevents the input field from losing browser focus when pressing buttons */
   const keep = (e) => e.preventDefault()
 
   return (
