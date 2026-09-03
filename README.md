@@ -52,12 +52,12 @@ All three ship as **a single deployment** on one origin — the API serves the s
 ### POS dashboard — React, touch-first
 
 <div align="center">
-<img src="docs/screenshots/dashboard/02-order.png" width="49%" alt="New order" />
-<img src="docs/screenshots/dashboard/03-products.png" width="49%" alt="Products" />
+<img src="docs/screenshots/dashboard/02-order.jpg" width="49%" alt="New order" />
+<img src="docs/screenshots/dashboard/03-products.jpg" width="49%" alt="Products" />
 </div>
 <div align="center">
-<img src="docs/screenshots/dashboard/04-returns.png" width="49%" alt="Returns" />
-<img src="docs/screenshots/dashboard/06-employees.png" width="49%" alt="Employees" />
+<img src="docs/screenshots/dashboard/04-returns.jpg" width="49%" alt="Returns" />
+<img src="docs/screenshots/dashboard/06-employees.jpg" width="49%" alt="Employees" />
 </div>
 
 <div align="center"><sub>Ordering with live point redemption · Catalogue · Partial returns with point clawback · Staff & roles</sub></div>
@@ -65,18 +65,26 @@ All three ship as **a single deployment** on one origin — the API serves the s
 ### Marketing site — bilingual AR/EN
 
 <div align="center">
-<img src="docs/screenshots/website/desktop-ar-home.png" width="49%" alt="Home" />
-<img src="docs/screenshots/website/desktop-ar-menu.png" width="49%" alt="Menu" />
+<img src="docs/screenshots/website/desktop-ar-home.jpg" width="49%" alt="Home" />
+<img src="docs/screenshots/website/desktop-ar-menu.jpg" width="49%" alt="Menu" />
 </div>
+<div align="center">
+<img src="docs/screenshots/website/desktop-ar-home-beans.jpg" width="49%" alt="Bean range" />
+<img src="docs/screenshots/website/desktop-ar-download.jpg" width="49%" alt="App download page" />
+</div>
+
+<div align="center"><sub>Home · Menu — 40 products, every one photographed · The bean range · The Android download page with sideload instructions</sub></div>
+
+#### On a phone
 
 <div align="center">
-<img src="docs/screenshots/website/mobile-ar-home.png" width="180" alt="Mobile home" />
-<img src="docs/screenshots/website/mobile-ar-menu.png" width="180" alt="Mobile menu" />
-<img src="docs/screenshots/website/mobile-en-home.png" width="180" alt="Mobile home EN" />
-<img src="docs/screenshots/website/mobile-en-about.png" width="180" alt="Mobile about EN" />
+<img src="docs/screenshots/website/mobile-ar-home.jpg" width="180" alt="Mobile home" />
+<img src="docs/screenshots/website/mobile-ar-menu.jpg" width="180" alt="Mobile menu" />
+<img src="docs/screenshots/website/mobile-ar-download.jpg" width="180" alt="Mobile download" />
+<img src="docs/screenshots/website/mobile-en-home.jpg" width="180" alt="Mobile home, English" />
 </div>
 
-<div align="center"><sub>40 products across 5 categories, every one photographed · full Arabic/English with direction switching</sub></div>
+<div align="center"><sub>Most visitors arrive on a phone. Zero horizontal overflow at 320/375/390&nbsp;px, 44&nbsp;px tap targets, and a real navigation menu — the last one was a bug, see below.</sub></div>
 
 ---
 
