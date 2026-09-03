@@ -7,6 +7,7 @@ import '../theme/app_colors.dart';
 import '../theme/app_text.dart';
 import '../theme/app_theme.dart';
 import '../utils/arabic_format.dart';
+import '../widgets/entrance.dart';
 import '../widgets/surfaces.dart';
 
 /// What became of an order. The three the design draws, with the tint each
@@ -131,72 +132,91 @@ class PurchasesScreen extends StatelessWidget {
         .map(Purchase.fromOrder)
         .toList(growable: false);
 
+    final ready =
+        customers.ordersStatus != SectionStatus.idle &&
+        customers.ordersStatus != SectionStatus.loading;
+
     return SafeArea(
       bottom: false,
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.stretch,
-        children: [
-          const Padding(
-            padding: EdgeInsets.fromLTRB(AppMetrics.screenPadding, 10, 20, 0),
-            child: Text('مشترياتي', style: AppText.screenTitle),
-          ),
-          const SizedBox(height: 18),
-          Expanded(
-            child: switch (customers.ordersStatus) {
-              SectionStatus.idle || SectionStatus.loading => const Center(
-                child: CircularProgressIndicator(color: AppColors.caramel),
+      child: EntranceGroup(
+        ready: ready,
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.stretch,
+          children: [
+            const Padding(
+              padding: EdgeInsets.fromLTRB(AppMetrics.screenPadding, 10, 20, 0),
+              child: WordReveal(
+                'مشترياتي',
+                style: AppText.screenTitle,
+                startIndex: 0,
               ),
-              SectionStatus.error => _Padded(
-                child: ErrorState(
-                  message:
-                      customers.ordersError ??
-                      'صار خطأ، ما قدرنا نحمّل مشترياتك',
-                  onRetry: () =>
-                      context.read<CustomerProvider>().refreshOrders(),
+            ),
+            const SizedBox(height: 18),
+            Expanded(
+              child: switch (customers.ordersStatus) {
+                SectionStatus.idle || SectionStatus.loading => const Center(
+                  child: CircularProgressIndicator(color: AppColors.caramel),
                 ),
-              ),
-              // `empty` shares this branch so the pull gesture survives an
-              // empty history: a customer whose first order was just rung up
-              // would otherwise have no way to see it, since the tabs live in
-              // an IndexedStack and only load once. The gesture is received by
-              // the scrollable, so the empty card sits inside a list of its own
-              // rather than beside one.
-              SectionStatus.empty || SectionStatus.loaded => RefreshIndicator(
-                color: AppColors.caramel,
-                backgroundColor: AppColors.surface,
-                onRefresh: () =>
-                    context.read<CustomerProvider>().refreshOrders(),
-                child: purchases.isEmpty
-                    ? ListView(
-                        physics: const AlwaysScrollableScrollPhysics(),
-                        padding: const EdgeInsets.symmetric(
-                          horizontal: AppMetrics.screenPadding,
-                        ),
-                        children: const [
-                          EmptyState(
-                            icon: Icons.shopping_bag_outlined,
-                            message: 'لسا ما اشتريت إشي',
-                            verticalPadding: 64,
+                SectionStatus.error => _Padded(
+                  child: ErrorState(
+                    message:
+                        customers.ordersError ??
+                        'صار خطأ، ما قدرنا نحمّل مشترياتك',
+                    onRetry: () =>
+                        context.read<CustomerProvider>().refreshOrders(),
+                  ),
+                ),
+                // `empty` shares this branch so the pull gesture survives an
+                // empty history: a customer whose first order was just rung up
+                // would otherwise have no way to see it, since the tabs live in
+                // an IndexedStack and only load once. The gesture is received by
+                // the scrollable, so the empty card sits inside a list of its own
+                // rather than beside one.
+                SectionStatus.empty || SectionStatus.loaded => RefreshIndicator(
+                  color: AppColors.caramel,
+                  backgroundColor: AppColors.surface,
+                  onRefresh: () =>
+                      context.read<CustomerProvider>().refreshOrders(),
+                  child: purchases.isEmpty
+                      ? ListView(
+                          physics: const AlwaysScrollableScrollPhysics(),
+                          padding: const EdgeInsets.symmetric(
+                            horizontal: AppMetrics.screenPadding,
                           ),
-                        ],
-                      )
-                    : ListView.separated(
-                        physics: const AlwaysScrollableScrollPhysics(),
-                        padding: const EdgeInsets.fromLTRB(
-                          AppMetrics.screenPadding,
-                          0,
-                          AppMetrics.screenPadding,
-                          24,
+                          children: const [
+                            EntranceItem(
+                              index: 1,
+                              child: EmptyState(
+                                icon: Icons.shopping_bag_outlined,
+                                message: 'لسا ما اشتريت إشي',
+                                verticalPadding: 64,
+                              ),
+                            ),
+                          ],
+                        )
+                      : ListView.separated(
+                          physics: const AlwaysScrollableScrollPhysics(),
+                          padding: const EdgeInsets.fromLTRB(
+                            AppMetrics.screenPadding,
+                            0,
+                            AppMetrics.screenPadding,
+                            24,
+                          ),
+                          itemCount: purchases.length,
+                          separatorBuilder: (_, _) =>
+                              const SizedBox(height: 14),
+                          itemBuilder: (context, index) => EntranceItem(
+                            // Offset past the title so the first card follows it
+                            // rather than landing with it.
+                            index: 1 + index,
+                            child: _PurchaseCard(purchase: purchases[index]),
+                          ),
                         ),
-                        itemCount: purchases.length,
-                        separatorBuilder: (_, _) => const SizedBox(height: 14),
-                        itemBuilder: (context, index) =>
-                            _PurchaseCard(purchase: purchases[index]),
-                      ),
-              ),
-            },
-          ),
-        ],
+                ),
+              },
+            ),
+          ],
+        ),
       ),
     );
   }

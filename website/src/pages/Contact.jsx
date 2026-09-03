@@ -3,6 +3,7 @@ import emailjs from '@emailjs/browser'
 import { motion } from 'motion/react'
 import { LuMapPin, LuPhone, LuClock } from 'react-icons/lu'
 import { useLanguage } from '../context/LanguageContext.jsx'
+import { CONTACT } from '../context/translations.js'
 
 function Contact() {
   const { translations } = useLanguage()
@@ -154,13 +155,31 @@ function Contact() {
             <div className="contact-info">
               <h3>{translations.contact.phone}</h3>
 
-              <a href={`tel:${translations.contact.phoneValue}`}>
+              {/* Dialed in international form, shown in the national one the
+                  shop actually writes. */}
+              <a href={`tel:${CONTACT.phoneDial}`} dir="ltr">
                 {translations.contact.phoneValue}
               </a>
 
-              <a href={`mailto:${translations.contact.emailValue}`}>
-                {translations.contact.emailValue}
+              <a
+                href={translations.contact.whatsAppUrl}
+                target="_blank"
+                rel="noopener noreferrer"
+              >
+                {translations.contact.whatsapp}
               </a>
+
+              {/*
+                The shop publishes no email address (CONTACT.email is null in
+                translations.js). Rendering it as soon as one exists is the
+                whole of the change needed here — nothing invented in the
+                meantime.
+              */}
+              {translations.contact.emailValue && (
+                <a href={`mailto:${translations.contact.emailValue}`} dir="ltr">
+                  {translations.contact.emailValue}
+                </a>
+              )}
             </div>
           </div>
 
@@ -171,12 +190,41 @@ function Contact() {
 
             <div className="contact-info">
               <h3>{translations.contact.hours}</h3>
-              <p>{translations.contact.weekdays}</p>
-              <p>{translations.contact.friday}</p>
+              <p>{translations.contact.hoursDaily}</p>
             </div>
           </div>
         </motion.aside>
       </section>
+
+      {/* The branch on the map. Google's keyless embed, on the same coordinates
+          the app's own map button opens, so both point at one pin. Lazy because
+          it is below the fold and costs a third-party frame to load. */}
+      <motion.section
+        className="contact-map"
+        initial={{ opacity: 0, y: 30 }}
+        whileInView={{ opacity: 1, y: 0 }}
+        viewport={{ once: true, amount: 0.15 }}
+        transition={{ duration: 0.6 }}
+      >
+        <iframe
+          className="contact-map-frame"
+          src={CONTACT.mapsEmbedUrl}
+          title={translations.contact.mapTitle}
+          loading="lazy"
+          referrerPolicy="no-referrer-when-downgrade"
+          allowFullScreen
+        />
+
+        <a
+          className="contact-map-link"
+          href={CONTACT.mapsUrl}
+          target="_blank"
+          rel="noopener noreferrer"
+        >
+          <LuMapPin aria-hidden="true" />
+          {translations.contact.mapLink}
+        </a>
+      </motion.section>
     </main>
   )
 }

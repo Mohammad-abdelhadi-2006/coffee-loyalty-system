@@ -10,6 +10,7 @@ import '../theme/app_colors.dart';
 import '../theme/app_text.dart';
 import '../theme/app_theme.dart';
 import '../widgets/app_buttons.dart';
+import '../widgets/entrance.dart';
 import '../widgets/surfaces.dart';
 import 'auth/login_screen.dart';
 import 'info/info_screens.dart';
@@ -74,127 +75,147 @@ class SettingsScreen extends StatelessWidget {
 
     return SafeArea(
       bottom: false,
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.stretch,
-        children: [
-          Expanded(
-            child: ListView(
+      // Nothing here waits on a network call — the profile is already in the
+      // provider — so this group is ready as soon as the tab is looked at.
+      child: EntranceGroup(
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.stretch,
+          children: [
+            Expanded(
+              child: ListView(
+                padding: const EdgeInsets.fromLTRB(
+                  AppMetrics.screenPadding,
+                  10,
+                  AppMetrics.screenPadding,
+                  0,
+                ),
+                children: [
+                  const WordReveal(
+                    'الإعدادات',
+                    style: AppText.screenTitle,
+                    startIndex: 0,
+                  ),
+
+                  const _GroupLabel('الحساب', index: 1),
+                  EntranceItem(
+                    index: 2,
+                    child: HairlineList(
+                      children: [
+                        AppRow(
+                          label: 'الاسم',
+                          trailing: Text(
+                            profile?.fullName ?? _unknown,
+                            style: AppText.rowValue,
+                          ),
+                        ),
+                        AppRow(
+                          label: 'رقم الهاتف',
+                          trailing: Text(
+                            profile?.phoneNumber ?? _unknown,
+                            style: AppText.rowValue.copyWith(
+                              fontFamily: AppText.latin,
+                              fontSize: 14.5,
+                            ),
+                            textDirection: TextDirection.ltr,
+                          ),
+                        ),
+                      ],
+                    ),
+                  ),
+
+                  const _GroupLabel('معلومات', index: 3),
+                  EntranceItem(
+                    index: 4,
+                    child: HairlineList(
+                      children: [
+                        AppRow(
+                          label: 'كيف تكسب نقاط؟',
+                          trailing: const _Chevron(),
+                          onTap: () => Navigator.of(context).push(
+                            MaterialPageRoute<void>(
+                              builder: (_) => const HowToEarnPointsScreen(),
+                            ),
+                          ),
+                        ),
+                        AppRow(
+                          label: 'تواصل معنا',
+                          trailing: const _Chevron(),
+                          onTap: () => Navigator.of(context).push(
+                            MaterialPageRoute<void>(
+                              builder: (_) => const ContactUsScreen(),
+                            ),
+                          ),
+                        ),
+                        AppRow(
+                          label: 'زوروا موقعنا',
+                          trailingIcon: Icons.north_east,
+                          trailing: const _Chevron(),
+                          // TODO(links): open the shop's site once the URL is
+                          // known — launchUrl the way [_Credits] does.
+                          onTap: () {},
+                        ),
+                        AppRow(
+                          label: 'إصدار التطبيق',
+                          labelStyle: AppText.rowLabel.copyWith(
+                            color: AppColors.ink62,
+                          ),
+                          trailing: Text(
+                            appVersion,
+                            style: AppText.rowValue.copyWith(
+                              fontFamily: AppText.latin,
+                              fontSize: 14.5,
+                              color: AppColors.ink42,
+                            ),
+                            textDirection: TextDirection.ltr,
+                          ),
+                        ),
+                      ],
+                    ),
+                  ),
+
+                  const SizedBox(height: 26),
+                  const EntranceItem(index: 5, child: _Credits()),
+                  const SizedBox(height: 10),
+                ],
+              ),
+            ),
+            Padding(
               padding: const EdgeInsets.fromLTRB(
                 AppMetrics.screenPadding,
-                10,
-                AppMetrics.screenPadding,
                 0,
+                AppMetrics.screenPadding,
+                18,
               ),
-              children: [
-                const Text('الإعدادات', style: AppText.screenTitle),
-
-                const _GroupLabel('الحساب'),
-                HairlineList(
-                  children: [
-                    AppRow(
-                      label: 'الاسم',
-                      trailing: Text(
-                        profile?.fullName ?? _unknown,
-                        style: AppText.rowValue,
-                      ),
-                    ),
-                    AppRow(
-                      label: 'رقم الهاتف',
-                      trailing: Text(
-                        profile?.phoneNumber ?? _unknown,
-                        style: AppText.rowValue.copyWith(
-                          fontFamily: AppText.latin,
-                          fontSize: 14.5,
-                        ),
-                        textDirection: TextDirection.ltr,
-                      ),
-                    ),
-                  ],
+              child: EntranceItem(
+                index: 6,
+                child: SecondaryButton(
+                  label: 'تسجيل الخروج',
+                  icon: Icons.logout,
+                  color: AppColors.deduct,
+                  onPressed: () => _confirmSignOut(context),
                 ),
-
-                const _GroupLabel('معلومات'),
-                HairlineList(
-                  children: [
-                    AppRow(
-                      label: 'كيف تكسب نقاط؟',
-                      trailing: const _Chevron(),
-                      onTap: () => Navigator.of(context).push(
-                        MaterialPageRoute<void>(
-                          builder: (_) => const HowToEarnPointsScreen(),
-                        ),
-                      ),
-                    ),
-                    AppRow(
-                      label: 'تواصل معنا',
-                      trailing: const _Chevron(),
-                      onTap: () => Navigator.of(context).push(
-                        MaterialPageRoute<void>(
-                          builder: (_) => const ContactUsScreen(),
-                        ),
-                      ),
-                    ),
-                    AppRow(
-                      label: 'زوروا موقعنا',
-                      trailingIcon: Icons.north_east,
-                      trailing: const _Chevron(),
-                      // TODO(links): open the shop's site once the URL is
-                      // known — launchUrl the way [_Credits] does.
-                      onTap: () {},
-                    ),
-                    AppRow(
-                      label: 'إصدار التطبيق',
-                      labelStyle: AppText.rowLabel.copyWith(
-                        color: AppColors.ink62,
-                      ),
-                      trailing: Text(
-                        appVersion,
-                        style: AppText.rowValue.copyWith(
-                          fontFamily: AppText.latin,
-                          fontSize: 14.5,
-                          color: AppColors.ink42,
-                        ),
-                        textDirection: TextDirection.ltr,
-                      ),
-                    ),
-                  ],
-                ),
-
-                const SizedBox(height: 26),
-                const _Credits(),
-                const SizedBox(height: 10),
-              ],
+              ),
             ),
-          ),
-          Padding(
-            padding: const EdgeInsets.fromLTRB(
-              AppMetrics.screenPadding,
-              0,
-              AppMetrics.screenPadding,
-              18,
-            ),
-            child: SecondaryButton(
-              label: 'تسجيل الخروج',
-              icon: Icons.logout,
-              color: AppColors.deduct,
-              onPressed: () => _confirmSignOut(context),
-            ),
-          ),
-        ],
+          ],
+        ),
       ),
     );
   }
 }
 
 class _GroupLabel extends StatelessWidget {
-  const _GroupLabel(this.text);
+  const _GroupLabel(this.text, {required this.index});
 
   final String text;
+
+  /// Where this label falls in the screen's entrance run.
+  final int index;
 
   @override
   Widget build(BuildContext context) {
     return Padding(
       padding: const EdgeInsets.fromLTRB(4, 26, 4, 10),
-      child: Text(text, style: AppText.groupLabel),
+      child: WordReveal(text, style: AppText.groupLabel, startIndex: index),
     );
   }
 }

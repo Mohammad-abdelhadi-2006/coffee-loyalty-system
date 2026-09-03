@@ -3,7 +3,18 @@
   <head>
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-    <link rel="icon" type="image/svg+xml" href="/favicon.svg" />
+    <!-- The shop's own mark. Several sizes because a browser tab, an iOS home
+         screen and an Android shortcut each pick a different one, and letting a
+         browser downscale one large file gives a muddier result than a PNG
+         resized for the size it is shown at. -->
+    <link rel="icon" type="image/png" sizes="32x32" href="/favicon-32.png" />
+    <link rel="icon" type="image/png" sizes="48x48" href="/favicon-48.png" />
+    <link rel="icon" type="image/png" sizes="96x96" href="/favicon-96.png" />
+    <link rel="apple-touch-icon" sizes="180x180" href="/apple-touch-icon.png" />
+    <link rel="icon" type="image/png" sizes="192x192" href="/icon-192.png" />
+    <!-- Tints the browser chrome on Android, so the bar above the page matches
+         the header instead of sitting as a white strip against it. -->
+    <meta name="theme-color" content="#7a5236" />
     <meta name="description" content="نكهة فنجان — مقهى يقدم قهوة مصنوعة يدوياً ولحظات دافئة كل يوم." />
     <title>نكهة فنجان</title>
   </head>

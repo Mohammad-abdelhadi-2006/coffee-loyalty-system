@@ -17,13 +17,15 @@
 **One site, one origin.** The API serves the dashboard itself, under a prefix:
 
 ```
-https://<your-domain>/               →  404 for now — reserved for the public site
+https://<your-domain>/               →  the public site (home, /menu, /aboutus, /contact, /download)
+https://<your-domain>/downloads/…    →  the Android build the download page links to
 https://<your-domain>/dashboard      →  the React dashboard
 https://<your-domain>/api/...        →  the API
 ```
 
-The root returning 404 is deliberate, not a misconfiguration. Nothing is published there yet,
-and the API refuses it explicitly rather than falling back to the dashboard.
+All three are one deployment. `/api` always wins, `/dashboard` is the dashboard's subtree, and
+everything else falls through to the site's `index.html` — which is what keeps `/menu` and the
+other client-side routes working on a refresh or a pasted link.
 
 That layout is not incidental — it is what lets the dashboard's API client keep its one-line
 base URL, `const BASE = '/api'` in `dashboard/src/api/client.js`. That path is absolute from
@@ -36,38 +38,65 @@ public domain and is unaffected by any of this.
 
 ---
 
-## 1. Build the dashboard into the API
+## 1. Build both front-ends into the API
 
-`npm run build` writes straight into `backend/CoffeeLoyalty.Api/wwwroot/dashboard` — the
-folder mirrors the URL, and both the output path and the `/dashboard/` asset prefix are set in
-`dashboard/vite.config.js`, not copied or rewritten by hand. `dotnet publish` then picks
-`wwwroot` up on its own, so these two commands produce the entire deployable:
+Each `npm run build` writes straight into the API's `wwwroot` — the dashboard into
+`wwwroot/dashboard`, the site into the root beside it. Both output paths live in the
+respective `vite.config.js`, not copied by hand. `dotnet publish` then picks `wwwroot` up on
+its own, so these commands produce the entire deployable:
 
 ```bash
+# Delete wwwroot first — see the warning below.
+rm -rf backend/CoffeeLoyalty.Api/wwwroot
+
 cd dashboard
 npm ci                 # or: npm install
+npm run build
+
+cd ../website
+npm ci
 npm run build
 
 cd ../backend/CoffeeLoyalty.Api
 dotnet publish -c Release -o ./publish
 ```
 
+**Order matters only in that both must run before `dotnet publish`.** The site's build does
+*not* empty `wwwroot` (`emptyOutDir: false`), because doing so would delete the dashboard that
+was just built into it.
+
 Upload the contents of `publish/` to the site root over FTP or Web Deploy.
 
-**Verify before uploading:** `publish/wwwroot/dashboard/index.html` must exist, alongside a
-`publish/wwwroot/dashboard/assets/` folder. If it does not, the API still starts and still
-serves `/api`, but `https://<your-domain>/dashboard` returns 404 — the startup log says which
-of the two happened:
+**Verify before uploading.** Both of these must exist:
 
 ```
-Dashboard is being served at /dashboard from ...\wwwroot\dashboard\index.html.   ← good
-No dashboard build in wwwroot/dashboard; serving the API only.                   ← you skipped npm run build
+publish/wwwroot/index.html                 ← the public site
+publish/wwwroot/dashboard/index.html       ← the dashboard
 ```
 
-**If you are redeploying over an older build**, delete `backend/CoffeeLoyalty.Api/wwwroot`
-first. `emptyOutDir` clears `wwwroot/dashboard`, not its parent, so an `index.html` and
-`assets/` left at the root by a pre-`/dashboard` build survive — and the static file middleware
-will happily keep serving those stale files.
+The startup log states which of the two it found:
+
+```
+Public site is being served at / from ...\wwwroot\index.html.                  ← good
+Dashboard is being served at /dashboard from ...\wwwroot\dashboard\index.html.  ← good
+No public site in wwwroot; / will 404.                                          ← you skipped website/
+No dashboard build in wwwroot/dashboard; /dashboard will 404.                    ← you skipped dashboard/
+```
+
+**Always delete `backend/CoffeeLoyalty.Api/wwwroot` before a rebuild.** Vite writes new files
+under content-hashed names and removes none of the old ones, so without this every deploy
+carries the accumulated assets of every past deploy — and a stale `index.html` left behind
+would keep being served in preference to the new one.
+
+### The Android build
+
+`website/public/downloads/nakhat-finjan.apk` is copied to `wwwroot/downloads/` by the site's
+build, and the download page links at it. It is ~48 MB, so it is most of the upload.
+
+`.apk` is not in ASP.NET Core's default content-type table, and the static file middleware
+refuses to serve an extension it does not know. `Program.cs` registers
+`application/vnd.android.package-archive` for it explicitly — without that the link answers
+404 and nothing in the log says why.
 
 ---
 
@@ -232,14 +261,22 @@ and no amount of app configuration fixes it.
 3. `https://<your-domain>/dashboard` → the dashboard's login page.
 4. `https://<your-domain>/dashboard/assets/…` (any file the page requests) → loads, not a 404.
    If the page renders unstyled or blank, this is what to check first.
-5. `https://<your-domain>/` → a 404. **Expected** — the root is reserved for the public site.
-6. `https://<your-domain>/api/nope` → a 404, **not** an HTML page.
-7. Read the startup log and confirm:
+5. `https://<your-domain>/` → the public site's home page.
+6. `https://<your-domain>/menu` typed **directly into the address bar** → the menu page, not a
+   404. This is the one that proves the SPA fallback is working; reaching it by clicking from
+   the home page does not test it, because that never hits the server.
+7. `https://<your-domain>/downloads/nakhat-finjan.apk` → downloads, ~48 MB. A 404 here means
+   the `.apk` content type did not register; a 0-byte file means the upload was truncated.
+8. `https://<your-domain>/api/nope` → a 404, **not** an HTML page. If this returns the site's
+   home page, the fallback order is wrong and every failed API call will look like a JSON
+   parse error to the dashboard.
+9. Read the startup log and confirm:
+   - `Public site is being served at / from ...`
    - `Dashboard is being served at /dashboard from ...`
    - `Firebase Admin SDK initialised.`
    - `Seeded the admin account '<username>'.` (first run) or `already exists; seeding skipped.`
-8. Log in to the dashboard with the seeded admin, then **change that password**.
-9. Enter the real menu from the dashboard's Products page — the catalogue ships empty.
+10. Log in to the dashboard with the seeded admin, then **change that password**.
+11. Enter the real menu from the dashboard's Products page — the catalogue ships empty.
 
 Any `warn:` line other than the expected CORS one in §5 means a step above was skipped.
 

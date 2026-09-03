@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 
 import '../theme/app_colors.dart';
 import '../theme/app_text.dart';
+import 'entrance.dart';
 
 /// The four tabs, in the design's order. Index 0 is the rightmost tab on
 /// screen: the whole app is RTL, so the row lays itself out from the right and
@@ -42,22 +43,54 @@ class AppBottomNav extends StatelessWidget {
   Widget build(BuildContext context) {
     final bottomInset = MediaQuery.viewPaddingOf(context).bottom;
 
-    return Container(
-      decoration: const BoxDecoration(
-        color: AppColors.surface,
-        border: Border(top: BorderSide(color: AppColors.navBorder)),
-      ),
-      padding: EdgeInsets.fromLTRB(12, 8, 12, 20 + bottomInset),
-      child: Row(
+    return EntranceGroup(
+      itemDuration: const Duration(milliseconds: 300),
+      stagger: const Duration(milliseconds: 75),
+      maxSteps: AppTab.values.length,
+      child: Stack(
         children: [
-          for (final tab in AppTab.values)
-            Expanded(
-              child: _NavTab(
-                tab: tab,
-                isCurrent: tab == current,
-                onTap: () => onSelected(tab),
+          // The bar itself arrives first and alone: the white surface and its
+          // hairline are drawn in before there is anything standing on them.
+          // Index 0 owns that beat, and the icons start from index 1.
+          Positioned.fill(
+            child: EntranceItem(
+              index: 0,
+              rise: 0.9,
+              child: const DecoratedBox(
+                decoration: BoxDecoration(
+                  color: AppColors.surface,
+                  border: Border(top: BorderSide(color: AppColors.navBorder)),
+                ),
               ),
             ),
+          ),
+
+          // The Row is the only unpositioned child, so it is what gives the
+          // Stack its height and the surface behind it its size.
+          Padding(
+            padding: EdgeInsets.fromLTRB(12, 8, 12, 20 + bottomInset),
+            child: Row(
+              children: [
+                for (final (index, tab) in AppTab.values.indexed)
+                  Expanded(
+                    child: EntranceItem(
+                      index: 1 + index,
+                      // Up from under the bar, and a touch past its resting
+                      // place before settling — the hop that was asked for.
+                      // Kept small: `easeOutBack` at this distance reads as a
+                      // pop, not a bounce.
+                      rise: 1.1,
+                      curve: Curves.easeOutBack,
+                      child: _NavTab(
+                        tab: tab,
+                        isCurrent: tab == current,
+                        onTap: () => onSelected(tab),
+                      ),
+                    ),
+                  ),
+              ],
+            ),
+          ),
         ],
       ),
     );

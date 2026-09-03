@@ -7,6 +7,7 @@ import '../theme/app_colors.dart';
 import '../theme/app_text.dart';
 import '../theme/app_theme.dart';
 import '../utils/arabic_format.dart';
+import '../widgets/entrance.dart';
 import '../widgets/surfaces.dart';
 
 /// The menu: a category strip and the items in the selected category.
@@ -34,83 +35,103 @@ class _MenuScreenState extends State<MenuScreen> {
     final category = _categories[_selected];
     final items = customers.productsIn(category);
 
+    final ready =
+        customers.productsStatus != SectionStatus.idle &&
+        customers.productsStatus != SectionStatus.loading;
+
     return SafeArea(
       bottom: false,
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.stretch,
-        children: [
-          const Padding(
-            padding: EdgeInsets.fromLTRB(AppMetrics.screenPadding, 10, 20, 0),
-            child: Text('المنيو', style: AppText.screenTitle),
-          ),
-          const SizedBox(height: 18),
-          _CategoryStrip(
-            categories: _categories,
-            selected: _selected,
-            onSelected: (index) => setState(() => _selected = index),
-          ),
-          const SizedBox(height: 18),
-          Expanded(
-            child: switch (customers.productsStatus) {
-              SectionStatus.idle || SectionStatus.loading => const Center(
-                child: CircularProgressIndicator(color: AppColors.caramel),
+      // Held until the menu itself is here, so the title and the category strip
+      // do not animate in over a spinner and the rows do not animate a second
+      // time when they arrive.
+      child: EntranceGroup(
+        ready: ready,
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.stretch,
+          children: [
+            const Padding(
+              padding: EdgeInsets.fromLTRB(AppMetrics.screenPadding, 10, 20, 0),
+              child: WordReveal(
+                'المنيو',
+                style: AppText.screenTitle,
+                startIndex: 0,
               ),
-              SectionStatus.error => _Padded(
-                child: ErrorState(
-                  message:
-                      customers.productsError ??
-                      'صار خطأ، ما قدرنا نحمّل المنيو',
-                  onRetry: () =>
-                      context.read<CustomerProvider>().refreshProducts(),
+            ),
+            const SizedBox(height: 18),
+            EntranceItem(
+              index: 1,
+              child: _CategoryStrip(
+                categories: _categories,
+                selected: _selected,
+                onSelected: (index) => setState(() => _selected = index),
+              ),
+            ),
+            const SizedBox(height: 18),
+            Expanded(
+              child: switch (customers.productsStatus) {
+                SectionStatus.idle || SectionStatus.loading => const Center(
+                  child: CircularProgressIndicator(color: AppColors.caramel),
                 ),
-              ),
-              // `empty` here means the whole menu came back empty; a category
-              // with nothing in it is the same empty card, reached through the
-              // `items.isEmpty` branch below.
-              SectionStatus.empty || SectionStatus.loaded => RefreshIndicator(
-                color: AppColors.caramel,
-                backgroundColor: AppColors.surface,
-                onRefresh: () =>
-                    context.read<CustomerProvider>().refreshProducts(),
-                child: ListView(
-                  physics: const AlwaysScrollableScrollPhysics(),
-                  padding: const EdgeInsets.fromLTRB(
-                    AppMetrics.screenPadding,
-                    0,
-                    AppMetrics.screenPadding,
-                    24,
+                SectionStatus.error => _Padded(
+                  child: ErrorState(
+                    message:
+                        customers.productsError ??
+                        'صار خطأ، ما قدرنا نحمّل المنيو',
+                    onRetry: () =>
+                        context.read<CustomerProvider>().refreshProducts(),
                   ),
-                  children: [
-                    if (items.isEmpty)
-                      const EmptyState(
-                        icon: Icons.notes_outlined,
-                        message: 'لا يوجد أصناف حالياً',
-                        verticalPadding: 56,
-                      )
-                    else
-                      HairlineList(
-                        children: [
-                          for (final item in items)
-                            AppRow(
-                              label: item.name,
-                              trailing: PriceLabel(
-                                amount: formatMoney(item.price),
-                                // Beans sell by weight, so their price needs
-                                // the unit spelled out; everything else is per
-                                // item and does not.
-                                unit: item.unitType == ProductUnitType.kg
-                                    ? 'د.أ / كغم'
-                                    : 'د.أ',
-                              ),
-                            ),
-                        ],
-                      ),
-                  ],
                 ),
-              ),
-            },
-          ),
-        ],
+                // `empty` here means the whole menu came back empty; a category
+                // with nothing in it is the same empty card, reached through the
+                // `items.isEmpty` branch below.
+                SectionStatus.empty || SectionStatus.loaded => RefreshIndicator(
+                  color: AppColors.caramel,
+                  backgroundColor: AppColors.surface,
+                  onRefresh: () =>
+                      context.read<CustomerProvider>().refreshProducts(),
+                  child: ListView(
+                    physics: const AlwaysScrollableScrollPhysics(),
+                    padding: const EdgeInsets.fromLTRB(
+                      AppMetrics.screenPadding,
+                      0,
+                      AppMetrics.screenPadding,
+                      24,
+                    ),
+                    children: [
+                      if (items.isEmpty)
+                        const EmptyState(
+                          icon: Icons.notes_outlined,
+                          message: 'لا يوجد أصناف حالياً',
+                          verticalPadding: 56,
+                        )
+                      else
+                        HairlineList(
+                          children: [
+                            for (final (i, item) in items.indexed)
+                              EntranceItem(
+                                index: 2 + i,
+                                child: AppRow(
+                                  label: item.name,
+                                  trailing: PriceLabel(
+                                    amount: formatMoney(item.price),
+                                    // Beans sell by weight, so their price needs
+                                    // the unit spelled out; everything else is per
+                                    // item and does not.
+                                    unit: item.unitType == ProductUnitType.kg
+                                        ? 'د.أ / كغم'
+                                        : 'د.أ',
+                                  ),
+                                ),
+                              ),
+                          ],
+                        ),
+                    ],
+                  ),
+                ),
+              },
+            ),
+          ],
+        ),
       ),
     );
   }

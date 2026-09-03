@@ -4,6 +4,7 @@ import Home from './pages/Home.jsx'
 import Menu from './pages/Menu.jsx'
 import AboutUs from './pages/AboutUs.jsx'
 import Contact from './pages/Contact.jsx'
+import Download from './pages/Download.jsx'
 
 function App() {
   return (
@@ -14,6 +15,7 @@ function App() {
         <Route path="/menu" element={<Menu />} />
         <Route path="/aboutus" element={<AboutUs />} />
         <Route path="/contact" element={<Contact />} />
+        <Route path="/download" element={<Download />} />
       </Routes>
       <Footer />
     </>

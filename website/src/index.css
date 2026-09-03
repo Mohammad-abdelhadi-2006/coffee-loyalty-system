@@ -94,8 +94,8 @@ header .logo-link {
   padding-right: 0.5rem;
 }
 
-header button {
-  padding: 0.5rem;
+header .lang-toggle {
+  padding: 0.5rem 0.7rem;
   background: var(--text-on-dark);
   color: var(--title-on-light);
   font-size: var(--font-md);
@@ -108,9 +108,124 @@ header button {
   border: 0;
 }
 
-header button:hover {
+header .lang-toggle:hover {
   background: var(--broun);
   color: var(--text-on-dark);
+}
+
+/* Shown only in the panel on a phone, only on the bar on a wide screen. */
+.lang-toggle.in-menu {
+  display: none;
+}
+
+/* The hamburger. Hidden above the breakpoint, where the row fits. */
+.nav-toggle {
+  display: none;
+  align-items: center;
+  justify-content: center;
+  width: 46px;
+  height: 46px;
+  padding: 0;
+  border: 0;
+  border-radius: 12px;
+  background: transparent;
+  color: var(--white);
+  font-size: 1.6rem;
+  cursor: pointer;
+}
+
+.nav-toggle:focus-visible,
+header .lang-toggle:focus-visible,
+header nav a:focus-visible {
+  outline: 2px solid var(--text-on-dark);
+  outline-offset: 2px;
+}
+
+.nav-backdrop {
+  position: fixed;
+  inset: 0;
+  z-index: -1;
+  background: rgba(20, 12, 7, 0.45);
+}
+
+/* ── Phone: the row becomes a panel ──────────────────────────────────────
+   Below this width five links, a language switch and the logo cannot share a
+   line. They used to be laid out anyway and simply ran off the edge — three
+   links and the switch sat outside the viewport with no way to reach them. */
+@media (max-width: 860px) {
+  header {
+    padding: 0.35rem var(--gap-sm);
+  }
+
+  .nav-toggle {
+    display: inline-flex;
+  }
+
+  .lang-toggle.on-bar {
+    display: none;
+  }
+
+  .lang-toggle.in-menu {
+    display: inline-flex;
+    align-items: center;
+    align-self: flex-start;
+    min-height: 44px;
+    margin-top: 0.35rem;
+  }
+
+  header nav {
+    position: absolute;
+    inset-inline: 0;
+    top: 100%;
+    z-index: 1;
+    flex-direction: column;
+    justify-content: flex-start;
+    gap: 0;
+    padding: 0.5rem 0.75rem 1rem;
+    background: var(--broun);
+    box-shadow: 0 14px 30px rgba(20, 12, 7, 0.28);
+
+    /* Collapsed by default and opened by class, rather than mounted and
+       unmounted — the links stay in the DOM in one order for both layouts. */
+    max-height: 0;
+    overflow: hidden;
+    visibility: hidden;
+    opacity: 0;
+    transition:
+      max-height 0.32s ease,
+      opacity 0.22s ease,
+      visibility 0.32s;
+  }
+
+  header nav.is-open {
+    max-height: 22rem;
+    visibility: visible;
+    opacity: 1;
+  }
+
+  header nav a {
+    /* A comfortable target on glass: the row links were 21px tall. */
+    display: flex;
+    align-items: center;
+    min-height: 48px;
+    padding: 0.35rem 0.6rem;
+    border-radius: 10px;
+    font-size: 1.15rem;
+  }
+
+  header nav a:active {
+    background: rgba(255, 249, 237, 0.12);
+  }
+
+  header .logo-img {
+    height: 42px;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  header nav {
+    transition: none;
+  }
 }
 /*----------------------footer----------------------*/
 footer {
@@ -366,18 +481,6 @@ footer .logo-link {
   color: var(--broun, #493124);
 }
 
-.home-btn-dark {
-  margin-top: 1.8rem;
-  border: 1px solid var(--broun, #493124);
-  background: var(--broun, #493124);
-  color: var(--text-on-dark, #fff9ed);
-}
-
-.home-btn-dark:hover {
-  border-color: #bd8a4b;
-  background: #bd8a4b;
-}
-
 .hero-corner-decoration {
   position: absolute;
   right: -100px;
@@ -397,49 +500,6 @@ footer .logo-link {
   border-radius: 50%;
 }
 
-/* =========================
-   Quality Section
-========================= */
-
-.quality-section {
-  position: relative;
-  z-index: 3;
-  display: grid;
-  grid-template-columns: repeat(3, minmax(0, 1fr));
-  gap: 1rem;
-  width: min(100% - 2rem, 1120px);
-  margin: 0 auto;
-  padding: 4rem 0 5rem;
-}
-
-.quality-card,
-.crafted-card {
-  border: 1px solid rgba(94, 65, 43, 0.1);
-  border-radius: 18px;
-  background:
-    linear-gradient(
-      145deg,
-      rgba(255, 255, 255, 0.85),
-      rgba(245, 232, 211, 0.9)
-    ),
-    var(--cream, #f5e8d3);
-  box-shadow: 0 15px 35px rgba(75, 45, 24, 0.1);
-  transition:
-    transform 0.3s ease,
-    box-shadow 0.3s ease;
-}
-
-.quality-card {
-  min-height: 225px;
-  padding: 1.7rem;
-}
-
-.quality-card:hover,
-.crafted-card:hover {
-  transform: translateY(-7px);
-  box-shadow: 0 22px 40px rgba(75, 45, 24, 0.14);
-}
-
 .home-card-icon {
   display: grid;
   place-items: center;
@@ -450,21 +510,6 @@ footer .logo-link {
   background: rgba(189, 138, 75, 0.15);
   color: #a66f32;
   font-size: 1.35rem;
-}
-
-.quality-card h3,
-.crafted-card h3 {
-  margin-bottom: 0.7rem;
-  color: var(--title-on-light, #3b291f);
-  font-size: 1.1rem;
-}
-
-.quality-card p,
-.crafted-card p {
-  margin-bottom: 0;
-  color: var(--text-on-light, #695648);
-  font-size: 0.92rem;
-  line-height: 1.75;
 }
 
 /* =========================
@@ -501,40 +546,11 @@ footer .logo-link {
 }
 
 /* =========================
-   Crafted Coffee Section
+   Beans Section
 ========================= */
 
-.crafted-section {
-  padding: 7rem 1rem 6rem;
-}
-
-.crafted-section .section-heading {
-  margin-bottom: 2.8rem;
-}
-
-.crafted-cards {
-  display: grid;
-  grid-template-columns: repeat(3, minmax(0, 1fr));
-  gap: 1rem;
-  width: min(100%, 1120px);
-  margin: 0 auto;
-}
-
-.crafted-card {
-  min-height: 250px;
-  padding: 1.7rem;
-}
-
-/* =========================
-   Why Us Section
-========================= */
-
-.why-section {
-  display: grid;
-  grid-template-columns: minmax(0, 0.95fr) minmax(0, 1fr);
-  align-items: center;
-  gap: clamp(2.5rem, 8vw, 8rem);
-  padding: 6rem max(1rem, calc((100% - 1120px) / 2));
+.beans-section {
+  padding: 6rem 1rem 5rem;
   background:
     linear-gradient(
       135deg,
@@ -544,60 +560,153 @@ footer .logo-link {
     var(--cream, #f5e8d3);
 }
 
-.why-image-wrapper {
-  position: relative;
-  padding: 1rem;
+.beans-section .section-heading {
+  margin-bottom: 2.6rem;
 }
 
-.why-image-wrapper::before {
-  content: "";
-  position: absolute;
-  inset: 0;
-  border: 1px solid rgba(189, 138, 75, 0.48);
-  border-radius: 24px;
-  transform: rotate(-5deg);
+.beans-grid {
+  display: grid;
+  grid-template-columns: 1fr;
+  gap: 1rem;
+  width: min(100%, 1120px);
+  margin: 0 auto;
+  padding: 0;
+  list-style: none;
 }
 
-.why-image-wrapper img {
+@media (min-width: 720px) {
+  .beans-grid {
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+  }
+}
+
+/* Same border, radius, gradient and shadow recipe as .best-seller-card and
+   .menu-card, so a bean card is recognisably the same object. */
+.bean-card {
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+  border: 1px solid rgba(94, 65, 43, 0.1);
+  border-radius: 18px;
+  background:
+    linear-gradient(
+      145deg,
+      rgba(255, 255, 255, 0.85),
+      rgba(245, 232, 211, 0.9)
+    ),
+    var(--cream, #f5e8d3);
+  box-shadow: 0 12px 28px rgba(75, 45, 24, 0.08);
+  transition:
+    transform 0.3s ease,
+    box-shadow 0.3s ease;
+}
+
+.bean-card:hover {
+  transform: translateY(-6px);
+  box-shadow: 0 20px 38px rgba(75, 45, 24, 0.14);
+}
+
+.bean-card-media {
   position: relative;
-  z-index: 1;
+  display: grid;
+  place-items: center;
+  overflow: hidden;
+
+  /* Fixed by the frame, not by the file: a photo of any ratio is cropped to
+     this rather than changing the card's height and breaking the row. */
+  aspect-ratio: 4 / 3;
+
+  /* The stand-in, shown until a photo is supplied. A finished-looking tinted
+     panel in the site's own tokens — not an outline or a hatch, which read as
+     something broken. */
+  background:
+    radial-gradient(
+      circle at 50% 42%,
+      rgba(255, 255, 255, 0.75),
+      transparent 62%
+    ),
+    linear-gradient(150deg, rgba(189, 138, 75, 0.2), rgba(122, 82, 54, 0.13)),
+    var(--cream, #f5e8d3);
+  border-bottom: 1px solid rgba(94, 65, 43, 0.1);
+}
+
+.bean-card-media img {
   display: block;
   width: 100%;
-  max-width: 470px;
-  aspect-ratio: 4 / 5;
-  margin-inline: auto;
-  border-radius: 18px;
+  height: 100%;
   object-fit: cover;
-  box-shadow: 0 18px 40px rgba(75, 45, 24, 0.14);
+
+  /* Fades up as it decodes. The stand-in behind it means there is never a blank
+     frame — the photo simply resolves over it. */
+  opacity: 0;
+  transition: opacity 0.45s ease;
 }
 
-.why-content {
-  max-width: 520px;
-  color: var(--text-on-light, #695648);
+.bean-card-media img.is-loaded {
+  opacity: 1;
 }
 
-.why-content h2 {
-  margin-bottom: 1.5rem;
+.bean-card-mark {
+  display: grid;
+  place-items: center;
+  width: 74px;
+  height: 74px;
+  border: 1px solid rgba(189, 138, 75, 0.34);
+  border-radius: 50%;
+  background: rgba(255, 255, 255, 0.5);
+  color: #a66f32;
+  font-size: 1.7rem;
+}
+
+.bean-card-body {
+  display: flex;
+  flex: 1;
+  flex-direction: column;
+  gap: 0.5rem;
+  padding: 1.15rem 1.2rem 1.3rem;
+  text-align: start;
+}
+
+.bean-card-body h3 {
+  margin: 0;
   color: var(--title-on-light, #3b291f);
-  font-size: clamp(2.2rem, 5vw, 4rem);
-  font-weight: 500;
-  line-height: 1.05;
-  letter-spacing: -0.06em;
+  font-size: 1.12rem;
+  font-weight: 700;
+  line-height: 1.35;
 }
 
-.why-content h2::after {
-  content: "";
-  display: block;
-  width: 58px;
-  height: 2px;
-  margin-top: 1.5rem;
-  background: #bd8a4b;
+.bean-card-body p {
+  margin: 0;
+  color: var(--text-on-light, #695648);
+  font-size: 0.9rem;
+  line-height: 1.8;
 }
 
-.why-content p {
-  margin-bottom: 0;
-  font-size: 1rem;
-  line-height: 1.9;
+@media (max-width: 560px) {
+  .beans-section {
+    padding: 4.5rem 0.75rem 4rem;
+  }
+
+  .bean-card-mark {
+    width: 62px;
+    height: 62px;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .bean-card,
+  .bean-card-media img {
+    transition: none;
+  }
+
+  .bean-card:hover {
+    transform: none;
+  }
+
+  /* No fade to wait through: the photo is simply there once it has decoded. */
+  .bean-card-media img {
+    opacity: 1;
+  }
 }
 
 /* =========================
@@ -758,6 +867,294 @@ footer .logo-link {
 }
 
 /* =========================
+   Get the App Section
+========================= */
+
+/* A two-column band on the site's cream gradient, so this reads as a sibling
+   of the sections above it rather than a new visual world.
+   Mobile-first: the single-column stack below is the base, and the two-column
+   layout is added at the wide breakpoint. */
+
+.get-app-section {
+  display: grid;
+  grid-template-columns: 1fr;
+  gap: var(--gap-xl);
+  align-items: center;
+  padding: 5rem 1.25rem;
+  background:
+    linear-gradient(
+      135deg,
+      rgba(245, 232, 211, 0.95),
+      rgba(239, 219, 188, 0.75)
+    ),
+    var(--cream, #f5e8d3);
+
+  /* The header is fixed on this page, so a scrolled-to heading would otherwise
+     land underneath it. */
+  scroll-margin-top: 6rem;
+}
+
+.get-app-content {
+  width: min(100%, 560px);
+  margin-inline: auto;
+  text-align: center;
+  color: var(--text-on-light, #695648);
+}
+
+.get-app-content h2 {
+  margin-bottom: 1.1rem;
+  color: var(--title-on-light, #3b291f);
+  font-size: clamp(2rem, 5vw, 3.4rem);
+  font-weight: 500;
+  line-height: 1.05;
+  letter-spacing: -0.06em;
+}
+
+.get-app-lead {
+  margin-bottom: var(--gap-lg);
+  font-size: 1rem;
+  line-height: 1.9;
+}
+
+/* ── Features ── */
+
+.get-app-features {
+  display: grid;
+  gap: var(--gap1);
+  margin: 0 0 var(--gap-lg);
+  padding: 0;
+  list-style: none;
+  text-align: start;
+}
+
+.get-app-feature {
+  display: grid;
+  grid-template-columns: auto minmax(0, 1fr);
+  gap: var(--gap1);
+  align-items: start;
+  padding: 1.1rem;
+  border: 1px solid rgba(94, 65, 43, 0.1);
+  border-radius: 18px;
+  background:
+    linear-gradient(
+      145deg,
+      rgba(255, 255, 255, 0.85),
+      rgba(245, 232, 211, 0.9)
+    ),
+    var(--cream, #f5e8d3);
+  box-shadow: 0 10px 25px rgba(75, 45, 24, 0.06);
+  transition:
+    transform 0.3s ease,
+    box-shadow 0.3s ease;
+}
+
+.get-app-feature:hover {
+  transform: translateY(-5px);
+  box-shadow: 0 18px 35px rgba(75, 45, 24, 0.12);
+}
+
+/* .home-card-icon carries a bottom margin for the stacked cards above; here it
+   sits beside the text instead. */
+.get-app-feature .home-card-icon {
+  margin-bottom: 0;
+  width: 42px;
+  height: 42px;
+  font-size: 1.15rem;
+}
+
+.get-app-feature h3 {
+  margin-bottom: 0.35rem;
+  color: var(--title-on-light, #3b291f);
+  font-size: 1.05rem;
+}
+
+.get-app-feature p {
+  margin-bottom: 0;
+  font-size: 0.92rem;
+  line-height: 1.75;
+}
+
+.get-app-rate {
+  margin-bottom: var(--gap-md);
+  padding: 0.9rem 1.1rem;
+  border-inline-start: 3px solid #bd8a4b;
+  border-radius: 10px;
+  background: rgba(189, 138, 75, 0.1);
+  color: var(--title-on-light, #3b291f);
+  font-size: 0.92rem;
+  line-height: 1.8;
+  text-align: start;
+}
+
+/* ── Google Play badge ── */
+
+.get-app-badge {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.7rem;
+  padding: 0.7rem 1.4rem;
+  border: 1px solid transparent;
+  border-radius: 12px;
+  background: var(--dark-broun, #5c3a22);
+  color: var(--white);
+  text-decoration: none;
+  transition:
+    transform 0.3s ease,
+    box-shadow 0.3s ease,
+    background-color 0.3s ease;
+}
+
+a.get-app-badge:hover {
+  transform: translateY(-3px);
+  background: var(--broun, #7a5236);
+  box-shadow: 0 15px 30px rgba(75, 45, 24, 0.22);
+}
+
+a.get-app-badge:focus-visible {
+  outline: 2px solid #bd8a4b;
+  outline-offset: 3px;
+}
+
+/* No listing yet: muted, unclickable, and visibly not a button. */
+.get-app-badge.is-disabled {
+  border-color: rgba(94, 65, 43, 0.25);
+  background: transparent;
+  color: var(--text-on-light, #695648);
+  cursor: not-allowed;
+}
+
+.get-app-badge-icon {
+  flex-shrink: 0;
+  font-size: 1.6rem;
+}
+
+.get-app-badge-text {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  line-height: 1.25;
+}
+
+.get-app-badge-text small {
+  font-size: 0.7rem;
+  letter-spacing: 0.04em;
+  opacity: 0.85;
+}
+
+.get-app-badge-text strong {
+  font-size: 1.05rem;
+  font-weight: 600;
+
+  /* A Latin brand name inside an RTL document: without this, the surrounding
+     direction can reorder it. */
+  direction: ltr;
+}
+
+/* ── Phone frames (placeholders until real screenshots exist) ── */
+
+.get-app-phones {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 0.75rem;
+  width: 100%;
+}
+
+.get-app-phone {
+  display: flex;
+  flex: 1 1 0;
+  flex-direction: column;
+  align-items: center;
+  gap: 0.7rem;
+  max-width: 175px;
+}
+
+.get-app-phone-screen {
+  width: 100%;
+  overflow: hidden;
+  border: 3px solid var(--dark-broun, #5c3a22);
+  border-radius: 22px;
+  background: var(--white);
+  box-shadow: 0 14px 30px rgba(75, 45, 24, 0.14);
+
+  /* The captures are 1080×2400, so the frame takes the screenshots' own ratio
+     and nothing is cropped. */
+  aspect-ratio: 9 / 20;
+}
+
+.get-app-phone-screen img {
+  display: block;
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+}
+
+.get-app-phone-label {
+  color: var(--title-on-light, #3b291f);
+  font-size: 0.82rem;
+  font-weight: 700;
+}
+
+/* The middle frame sits higher, the way a store listing stages three screens.
+   Moving the whole frame keeps its screen and its label together. */
+.get-app-phone.is-raised {
+  transform: translateY(-1.5rem);
+}
+
+@media (min-width: 851px) {
+  .get-app-section {
+    grid-template-columns: minmax(0, 0.9fr) minmax(0, 1fr);
+    gap: clamp(2.5rem, 7vw, 6rem);
+    padding: 6rem max(1rem, calc((100% - 1120px) / 2));
+  }
+
+  .get-app-content {
+    margin-inline: 0;
+    text-align: start;
+  }
+
+  .get-app-features {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+}
+
+@media (max-width: 560px) {
+  .get-app-section {
+    padding: 4rem 1rem;
+  }
+
+  .get-app-phones {
+    gap: 0.5rem;
+  }
+
+  .get-app-phone-screen {
+    border-width: 2px;
+    border-radius: 15px;
+  }
+
+  .get-app-phone-label {
+    font-size: 0.72rem;
+  }
+
+  .get-app-badge {
+    width: 100%;
+    justify-content: center;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .get-app-feature,
+  .get-app-badge {
+    transition: none;
+  }
+
+  .get-app-feature:hover,
+  a.get-app-badge:hover {
+    transform: none;
+  }
+}
+
+/* =========================
    Responsive
 ========================= */
 
@@ -773,45 +1170,6 @@ footer .logo-link {
 
   .hero-eyebrow {
     width: 100%;
-  }
-
-  .quality-section {
-    grid-template-columns: 1fr;
-    width: min(100% - 1.25rem, 560px);
-    margin: 0 auto;
-    padding: 3rem 0 4rem;
-  }
-
-  .quality-card {
-    min-height: 180px;
-  }
-
-  .crafted-cards {
-    grid-template-columns: 1fr;
-    width: min(100%, 560px);
-  }
-
-  .why-section {
-    grid-template-columns: 1fr;
-    padding: 4rem 1.25rem;
-  }
-
-  .why-image-wrapper {
-    width: min(100%, 460px);
-    margin-inline: auto;
-  }
-
-  .why-content {
-    margin-inline: auto;
-    text-align: center;
-  }
-
-  .why-content h2::after {
-    margin-inline: auto;
-  }
-
-  .why-content .home-btn {
-    margin-inline: auto;
   }
 
   .best-sellers-grid {
@@ -848,10 +1206,11 @@ footer .logo-link {
     box-sizing: border-box;
   }
 
-  .crafted-section,
   .best-sellers-section {
     padding: 4.5rem 0.75rem;
   }
+
+
 
   .best-seller-card {
     grid-template-columns: 1fr;
@@ -2044,8 +2403,64 @@ footer .logo-link {
   color: #a66f32;
 }
 
+/* ── Map ── */
+
+.contact-map {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: var(--gap1);
+  width: min(100% - 2rem, 1120px);
+  margin: 0 auto;
+  padding-bottom: 5rem;
+}
+
+.contact-map-frame {
+  width: 100%;
+  height: clamp(260px, 45vh, 420px);
+  border: 1px solid rgba(189, 138, 75, 0.35);
+  border-radius: 18px;
+
+  /* The frame carries Google's own light chrome, so it keeps a plain surface
+     under it rather than the page's cream. */
+  background: var(--white);
+  box-shadow: 0 12px 25px rgba(75, 45, 24, 0.08);
+}
+
+.contact-map-link {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.5rem;
+  padding: 0.6rem 1.2rem;
+  border: 1px solid rgba(189, 138, 75, 0.4);
+  border-radius: 999px;
+  color: var(--title-on-light, #3b291f);
+  font-size: 0.9rem;
+  text-decoration: none;
+  transition:
+    background-color 0.3s ease,
+    border-color 0.3s ease,
+    color 0.3s ease;
+}
+
+.contact-map-link:hover {
+  border-color: rgba(189, 138, 75, 0.75);
+  background: rgba(189, 138, 75, 0.12);
+  color: #a66f32;
+}
+
+.contact-map-link:focus-visible {
+  outline: 2px solid #bd8a4b;
+  outline-offset: 3px;
+}
+
 /* Responsive */
 @media (max-width: 800px) {
+  .contact-map {
+    width: min(100% - 1.25rem, 580px);
+    padding-bottom: 3.5rem;
+  }
+
   .contact {
     grid-template-columns: 1fr;
     width: min(100% - 1.25rem, 580px);
@@ -2098,4 +2513,835 @@ footer .logo-link {
   .row {
     grid-template-columns: 1fr;
   }
+}
+
+/* =========================
+   Menu — product cards
+========================= */
+
+/* The category row scrolls sideways on a narrow screen instead of wrapping into
+   three ragged lines, and centres itself once there is room for one line. */
+.menu-section .menu-category-nav {
+  flex-wrap: nowrap;
+  justify-content: flex-start;
+  overflow-x: auto;
+  scroll-snap-type: x proximity;
+  scrollbar-width: none;
+  -webkit-overflow-scrolling: touch;
+}
+
+.menu-section .menu-category-nav::-webkit-scrollbar {
+  display: none;
+}
+
+.menu-section .menu-category-button {
+  flex: 0 0 auto;
+  scroll-snap-align: center;
+}
+
+.menu-section .menu-category-button:focus-visible {
+  outline: 2px solid #bd8a4b;
+  outline-offset: 2px;
+}
+
+@media (min-width: 780px) {
+  .menu-section .menu-category-nav {
+    flex-wrap: wrap;
+    justify-content: center;
+    overflow-x: visible;
+  }
+}
+
+/* How many drinks are in the section — a real count, read off the data. */
+.category-count {
+  flex: 0 0 auto;
+  color: var(--text-on-light, #695648);
+  font-size: 0.78rem;
+  font-weight: 700;
+  letter-spacing: 0.06em;
+  white-space: nowrap;
+}
+
+/* ── The grid ── */
+
+.menu-grid {
+  display: grid;
+  grid-template-columns: 1fr;
+  gap: 1rem;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+@media (min-width: 560px) {
+  .menu-grid {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+}
+
+@media (min-width: 900px) {
+  .menu-grid {
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+  }
+}
+
+@media (min-width: 1200px) {
+  .menu-grid {
+    grid-template-columns: repeat(4, minmax(0, 1fr));
+  }
+}
+
+/* ── The card ── */
+
+/* Same border, radius, gradient and shadow recipe as .best-seller-card and
+   .get-app-feature, so a menu card is recognisably the same object as the
+   cards elsewhere on the site. */
+.menu-card {
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+  border: 1px solid rgba(94, 65, 43, 0.1);
+  border-radius: 18px;
+  background:
+    linear-gradient(
+      145deg,
+      rgba(255, 255, 255, 0.85),
+      rgba(245, 232, 211, 0.9)
+    ),
+    var(--cream, #f5e8d3);
+  box-shadow: var(--card-shadow, 0 12px 28px rgba(75, 45, 24, 0.08));
+
+  /* One transform for the whole card, assembled from custom properties so the
+     lift, the scale and the tilt can each change without any of them having to
+     know about the others. Every animated value below is a transform or an
+     opacity — nothing here touches layout. */
+  transform:
+    perspective(900px)
+    translate3d(0, var(--card-lift, 0px), 0)
+    scale(var(--card-scale, 1))
+    rotateX(var(--tilt-x, 0deg))
+    rotateY(var(--tilt-y, 0deg));
+
+  /* Springs back past the resting angle very slightly on pointer-leave. */
+  transition:
+    transform 0.45s cubic-bezier(0.22, 0.9, 0.28, 1.06),
+    box-shadow 0.3s ease;
+}
+
+/* Entrance. A keyframe rather than a transition specifically so the per-card
+   stagger can live in animation-delay — a transition-delay would also delay
+   every later hover on that card. `backwards` holds the from-state during the
+   wait and then releases the card to its normal style, leaving the transform
+   above free for hover and tilt. */
+@keyframes menu-card-in {
+  from {
+    opacity: 0;
+    transform: perspective(900px) translate3d(0, 18px, 0) scale(0.985);
+  }
+}
+
+.menu-card:not(.is-visible) {
+  opacity: 0;
+}
+
+.menu-card.is-visible {
+  animation: menu-card-in 380ms cubic-bezier(0.22, 0.75, 0.3, 1)
+    var(--reveal-delay, 0ms) backwards;
+}
+
+/* The group itself cross-fades when the filter changes, under the per-card
+   stagger — so the set arrives as one movement rather than 35. */
+@keyframes menu-category-in {
+  from {
+    opacity: 0;
+  }
+}
+
+/* `backwards`, never `both`: a forwards fill leaves the animation permanently
+   applied to this element, and because it wraps all 35 cards Chromium then keeps
+   that whole subtree composited for opacity on every frame — measured at half
+   the frame rate while scrolling. `backwards` releases the element once the
+   fade has finished, which is the entire difference. */
+.menu-category {
+  animation: menu-category-in 260ms ease backwards;
+}
+
+/* ── Hover and tap ── */
+
+/* Pointer devices only. A touch screen gets the same lift on :active instead,
+   below — a :hover rule there would stick after the finger lifts. */
+@media (hover: hover) and (pointer: fine) {
+  .menu-card:hover {
+    --card-lift: -6px;
+    --card-scale: 1.02;
+    --card-shadow: 0 20px 38px rgba(75, 45, 24, 0.14);
+  }
+}
+
+@media (hover: none) {
+  .menu-card:active {
+    --card-lift: -3px;
+    --card-scale: 1.015;
+    --card-shadow: 0 16px 30px rgba(75, 45, 24, 0.13);
+    transition:
+      transform 0.14s ease-out,
+      box-shadow 0.14s ease-out;
+  }
+}
+
+/* While the pointer is actually over the card the transform has to keep up with
+   it, so the long spring is swapped for a short follow. Removing the class on
+   leave hands the card back to the curve above, which is what makes it settle
+   rather than snap. `will-change` is scoped to exactly this state: promoting all
+   35 cards permanently would cost more than it saves. */
+.menu-card.is-tilting {
+  transition:
+    transform 0.09s linear,
+    box-shadow 0.3s ease;
+  will-change: transform;
+}
+
+/* ── The photo slot ── */
+
+.menu-card-media {
+  position: relative;
+  display: grid;
+  place-items: center;
+  overflow: hidden;
+
+  /* Fixed by the frame, not by the file: a photo of any ratio is cropped to
+     this rather than changing the card's height and breaking the grid. */
+  aspect-ratio: 4 / 3;
+
+  /* The stand-in, shown while no photo has been supplied. Deliberately a
+     finished-looking tinted panel in the site's own tokens — not an outline or
+     a hatch, which read as something broken. */
+  background:
+    radial-gradient(
+      circle at 50% 42%,
+      rgba(255, 255, 255, 0.75),
+      transparent 62%
+    ),
+    linear-gradient(
+      150deg,
+      rgba(189, 138, 75, 0.2),
+      rgba(122, 82, 54, 0.13)
+    ),
+    var(--cream, #f5e8d3);
+  border-bottom: 1px solid rgba(94, 65, 43, 0.1);
+}
+
+.menu-card-media img {
+  display: block;
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+}
+
+.menu-card-media-mark {
+  display: grid;
+  place-items: center;
+  width: 74px;
+  height: 74px;
+  border: 1px solid rgba(189, 138, 75, 0.34);
+  border-radius: 50%;
+  background: rgba(255, 255, 255, 0.5);
+  color: #a66f32;
+}
+
+/* ── The text ── */
+
+.menu-card-body {
+  display: flex;
+  flex: 1;
+  flex-direction: column;
+  gap: 0.55rem;
+  padding: 1.1rem 1.15rem 1.25rem;
+  text-align: start;
+}
+
+.menu-card-title {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 0.75rem;
+}
+
+.menu-card-title h3 {
+  margin: 0;
+  color: var(--title-on-light, #3b291f);
+  font-size: 1.05rem;
+  font-weight: 700;
+  line-height: 1.3;
+}
+
+.menu-card-price {
+  flex: 0 0 auto;
+  padding: 0.3rem 0.6rem;
+  border: 1px solid rgba(166, 111, 50, 0.3);
+  border-radius: 999px;
+  color: #a66f32;
+  font-size: 0.8rem;
+  font-weight: 700;
+  white-space: nowrap;
+
+  /* "1.50 JD" is Latin text inside an RTL card. */
+  direction: ltr;
+}
+
+.menu-card-body p {
+  margin: 0;
+  color: var(--text-on-light, #695648);
+  font-size: 0.87rem;
+  line-height: 1.75;
+}
+
+@media (max-width: 420px) {
+  .menu-card-media-mark {
+    width: 62px;
+    height: 62px;
+  }
+
+  .menu-card-body {
+    padding: 1rem;
+  }
+}
+
+/* Reduced motion: no entrance, no lift, no tilt, no cross-fade — the content is
+   simply there. This is belt-and-braces with the JS, which already skips the
+   observer and never attaches a pointer handler when the preference is set;
+   these rules also cover the case where the preference is switched on after the
+   page has loaded, and the `opacity: 1` is what guarantees a card can never be
+   left invisible waiting for an animation that will not run. */
+@media (prefers-reduced-motion: reduce) {
+  .menu-card,
+  .menu-card.is-visible,
+  .menu-card:not(.is-visible),
+  .menu-card.is-tilting {
+    opacity: 1;
+    transform: none;
+    transition: none;
+    animation: none;
+    will-change: auto;
+  }
+
+  .menu-card:hover,
+  .menu-card:active {
+    --card-lift: 0px;
+    --card-scale: 1;
+    transform: none;
+  }
+
+  .menu-category {
+    animation: none;
+  }
+}
+
+/* =========================
+   Download Page
+========================= */
+
+.download-page {
+  min-height: 100vh;
+  background:
+    radial-gradient(
+      circle at 88% 22%,
+      rgba(189, 138, 75, 0.08),
+      transparent 24rem
+    ),
+    var(--background, #f8f3eb);
+}
+
+/* Same dark band as the menu and contact headers, so this reads as another
+   page of the same site rather than a landing page bolted on. */
+.download-header {
+  position: relative;
+  z-index: 1;
+  display: grid;
+  place-items: center;
+  overflow: hidden;
+  padding: 8rem 1.5rem 5rem;
+  isolation: isolate;
+  background:
+    linear-gradient(135deg, rgba(38, 25, 18, 0.96), rgba(83, 53, 35, 0.9)),
+    var(--broun, #493124);
+  color: var(--title-on-dark, #fff9ed);
+  text-align: center;
+}
+
+.download-header::before {
+  content: "";
+  position: absolute;
+  inset: 1.25rem;
+  border: 1px solid rgba(255, 239, 204, 0.24);
+  pointer-events: none;
+}
+
+.download-header-content {
+  position: relative;
+  z-index: 2;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 0.9rem;
+  width: min(100%, 640px);
+}
+
+.download-tag {
+  margin: 0;
+  color: #d9ad6d;
+  font-size: 0.75rem;
+  font-weight: 700;
+  letter-spacing: 0.17em;
+}
+
+.download-header h1 {
+  margin: 0;
+  font-size: clamp(2.2rem, 6vw, 4rem);
+  font-weight: 500;
+  line-height: 1.05;
+  letter-spacing: -0.05em;
+  text-wrap: balance;
+}
+
+.download-line {
+  width: 90px;
+  height: 1px;
+  background: #d9ad6d;
+}
+
+.download-header p:not(.download-tag) {
+  margin: 0;
+  color: rgba(255, 249, 237, 0.86);
+  font-size: 1rem;
+  line-height: 1.9;
+}
+
+.download-decoration {
+  position: absolute;
+  z-index: 1;
+  width: 190px;
+  height: 190px;
+  border: 1px solid rgba(217, 173, 109, 0.28);
+  border-radius: 50%;
+  pointer-events: none;
+}
+
+.download-decoration-left {
+  top: -70px;
+  inset-inline-start: -70px;
+}
+
+.download-decoration-right {
+  bottom: -80px;
+  inset-inline-end: -60px;
+}
+
+/* ── The download panel ── */
+
+.download-panel {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: var(--gap1);
+  width: min(100% - 2rem, 620px);
+  margin: -3rem auto 0;
+  padding: 2.2rem 1.5rem;
+  position: relative;
+  z-index: 3;
+  border: 1px solid rgba(94, 65, 43, 0.12);
+  border-radius: 20px;
+  background:
+    linear-gradient(
+      145deg,
+      rgba(255, 255, 255, 0.92),
+      rgba(245, 232, 211, 0.92)
+    ),
+    var(--cream, #f5e8d3);
+  box-shadow: 0 18px 40px rgba(75, 45, 24, 0.12);
+  text-align: center;
+}
+
+.download-platform {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.45rem;
+  padding: 0.35rem 0.8rem;
+  border: 1px solid rgba(166, 111, 50, 0.28);
+  border-radius: 999px;
+  color: #a66f32;
+  font-size: 0.8rem;
+  font-weight: 700;
+}
+
+.download-cta {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 0.7rem;
+  width: min(100%, 340px);
+  min-height: 56px;
+  padding: 0.9rem 1.6rem;
+  border: 1px solid var(--broun, #493124);
+  border-radius: 999px;
+  background: var(--broun, #493124);
+  color: var(--title-on-dark, #fff9ed);
+  font-family: inherit;
+  font-size: 1.05rem;
+  font-weight: 700;
+  text-decoration: none;
+  transition:
+    transform 0.25s ease,
+    background-color 0.25s ease,
+    box-shadow 0.25s ease;
+}
+
+.download-cta svg {
+  font-size: 1.2rem;
+}
+
+a.download-cta:hover {
+  transform: translateY(-3px);
+  background: #bd8a4b;
+  border-color: #bd8a4b;
+  box-shadow: 0 16px 30px rgba(75, 45, 24, 0.24);
+}
+
+a.download-cta:focus-visible {
+  outline: 2px solid #bd8a4b;
+  outline-offset: 3px;
+}
+
+/* No file yet, or still being checked for. Deliberately not an <a> and not a
+   <button>: there is nothing to activate, so it takes no focus and offers no
+   click that would do nothing. */
+.download-cta.is-disabled {
+  border-color: rgba(94, 65, 43, 0.22);
+  background: transparent;
+  color: var(--text-on-light, #695648);
+  cursor: not-allowed;
+}
+
+.download-pending {
+  margin: 0;
+  max-width: 44ch;
+  color: var(--text-on-light, #695648);
+  font-size: 0.9rem;
+  line-height: 1.8;
+}
+
+.download-requirement {
+  margin: 0;
+  color: var(--text-on-light, #695648);
+  font-size: 0.82rem;
+}
+
+.download-rate {
+  margin: 0.4rem 0 0;
+  padding: 0.85rem 1.1rem;
+  border-inline-start: 3px solid #bd8a4b;
+  border-radius: 10px;
+  background: rgba(189, 138, 75, 0.1);
+  color: var(--title-on-light, #3b291f);
+  font-size: 0.9rem;
+  line-height: 1.8;
+  text-align: start;
+}
+
+/* ── Install steps ── */
+
+.download-steps {
+  width: min(100% - 2rem, 760px);
+  margin: 0 auto;
+  padding: 4rem 0 5rem;
+}
+
+.download-steps-head {
+  margin-bottom: 2rem;
+  text-align: center;
+}
+
+.download-steps-head h2 {
+  margin: 0 0 0.9rem;
+  color: var(--title-on-light, #3b291f);
+  font-size: clamp(1.7rem, 4vw, 2.6rem);
+  font-weight: 500;
+  letter-spacing: -0.04em;
+}
+
+.download-steps-head p {
+  max-width: 62ch;
+  margin: 0 auto;
+  color: var(--text-on-light, #695648);
+  line-height: 1.95;
+}
+
+.download-step-list {
+  display: grid;
+  gap: 0.8rem;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+  counter-reset: download-step;
+}
+
+.download-step {
+  display: grid;
+  grid-template-columns: auto minmax(0, 1fr);
+  gap: 1rem;
+  align-items: start;
+  padding: 1.1rem 1.2rem;
+  border: 1px solid rgba(94, 65, 43, 0.1);
+  border-radius: 16px;
+  background:
+    linear-gradient(
+      145deg,
+      rgba(255, 255, 255, 0.85),
+      rgba(245, 232, 211, 0.9)
+    ),
+    var(--cream, #f5e8d3);
+  box-shadow: 0 8px 20px rgba(75, 45, 24, 0.05);
+}
+
+.download-step-number {
+  display: grid;
+  flex: 0 0 auto;
+  place-items: center;
+  width: 34px;
+  height: 34px;
+  border-radius: 50%;
+  background: var(--broun, #493124);
+  color: var(--title-on-dark, #fff9ed);
+  font-size: 0.9rem;
+  font-weight: 700;
+  font-variant-numeric: tabular-nums;
+}
+
+.download-step-body h3 {
+  margin: 0 0 0.3rem;
+  color: var(--title-on-light, #3b291f);
+  font-size: 1.02rem;
+  line-height: 1.4;
+}
+
+.download-step-body p {
+  margin: 0;
+  color: var(--text-on-light, #695648);
+  font-size: 0.92rem;
+  line-height: 1.85;
+}
+
+/* ── Why the warning appears ── */
+
+.download-safety {
+  display: grid;
+  grid-template-columns: auto minmax(0, 1fr);
+  gap: 1rem;
+  align-items: start;
+  margin-top: 1.6rem;
+  padding: 1.3rem 1.4rem;
+  border: 1px solid rgba(166, 111, 50, 0.3);
+  border-radius: 16px;
+  background: rgba(189, 138, 75, 0.1);
+}
+
+.download-safety-icon {
+  display: grid;
+  place-items: center;
+  width: 42px;
+  height: 42px;
+  border-radius: 50%;
+  background: rgba(255, 255, 255, 0.6);
+  color: #a66f32;
+  font-size: 1.2rem;
+}
+
+.download-safety h3 {
+  display: flex;
+  align-items: center;
+  gap: 0.45rem;
+  margin: 0 0 0.4rem;
+  color: var(--title-on-light, #3b291f);
+  font-size: 1rem;
+}
+
+.download-safety p {
+  margin: 0;
+  color: var(--text-on-light, #695648);
+  font-size: 0.92rem;
+  line-height: 1.85;
+}
+
+@media (max-width: 560px) {
+  .download-header {
+    padding: 7rem 1rem 4.5rem;
+  }
+
+  .download-panel {
+    width: min(100% - 1.25rem, 620px);
+    padding: 1.8rem 1.1rem;
+  }
+
+  .download-steps {
+    width: min(100% - 1.25rem, 760px);
+    padding: 3rem 0 4rem;
+  }
+
+  .download-step,
+  .download-safety {
+    grid-template-columns: 1fr;
+    gap: 0.7rem;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .download-cta {
+    transition: none;
+  }
+
+  a.download-cta:hover {
+    transform: none;
+  }
+}
+
+/* =========================
+   Mobile hardening
+========================= */
+
+/* Decorative circles and corner marks are positioned to bleed past their
+   section on purpose. On a wide screen there is room for that; on a phone the
+   same bleed pushed the document wider than the viewport and the whole page
+   scrolled sideways. Clipping at the page wrapper keeps the effect and takes
+   away the scroll. `clip` rather than `hidden` so nothing here becomes a scroll
+   container — `hidden` would break `position: sticky` inside it. */
+.home-page,
+.menu-page,
+.story-page,
+.contact-page,
+.download-page {
+  overflow-x: clip;
+}
+
+@media (max-width: 700px) {
+  /* ── Tap targets ──────────────────────────────────────────────────────
+     Everything a finger has to hit gets real height. These were 21-23px
+     tall, which is roughly half what a thumb reliably lands on. */
+  .contact-info a,
+  footer a {
+    display: inline-flex;
+    align-items: center;
+    min-height: 44px;
+  }
+
+  .menu-section .menu-category-button {
+    min-height: 44px;
+  }
+
+  .social a {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    width: 44px;
+    height: 44px;
+  }
+
+  /* ── Text floor ───────────────────────────────────────────────────────
+     Nothing below 12px. Several labels sat at 10.9-11.7px, which is under
+     what most people can read comfortably at arm's length. */
+  .best-seller-tag,
+  .get-app-phone-label,
+  .get-app-badge-text small,
+  .gallery-heading p,
+  .download-requirement,
+  .menu-card-price,
+  .bean-card-body p,
+  .download-step-body p,
+  .download-safety p {
+    font-size: max(0.75rem, 12px);
+  }
+
+  /* Long unbroken tokens — a URL, a Latin product name — must wrap rather
+     than widen the page. */
+  .contact-info a,
+  .menu-card-title h3,
+  .bean-card-body h3,
+  .download-step-body h3 {
+    overflow-wrap: anywhere;
+  }
+}
+
+/* The hero video is the heaviest thing on the site by an order of magnitude.
+   A phone still downloads all of it, so at least stop it competing for
+   bandwidth with the content above the fold on a slow connection. */
+@media (max-width: 700px) {
+  .home-hero-video {
+    /* Keeps the poster frame area painted while it buffers instead of black. */
+    background: var(--broun, #493124);
+  }
+}
+
+/* =========================
+   Menu — items with no photo
+========================= */
+
+/* A row rather than a card. Padding it out to card size with an empty stand-in
+   made a third of the menu look unfinished; a compact list reads as a
+   deliberate way of showing an item that simply has no picture yet. */
+.menu-plain-list {
+  display: grid;
+  grid-template-columns: 1fr;
+  gap: 0.6rem;
+  margin: 1rem 0 0;
+  padding: 0;
+  list-style: none;
+}
+
+@media (min-width: 700px) {
+  .menu-plain-list {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+}
+
+.menu-plain-item {
+  display: grid;
+  grid-template-columns: auto minmax(0, 1fr);
+  gap: 0.85rem;
+  align-items: start;
+  padding: 0.9rem 1rem;
+  border: 1px solid rgba(94, 65, 43, 0.1);
+  border-radius: 14px;
+  background: rgba(247, 240, 234, 0.7);
+}
+
+.menu-plain-mark {
+  display: grid;
+  place-items: center;
+  width: 38px;
+  height: 38px;
+  border: 1px solid rgba(189, 138, 75, 0.3);
+  border-radius: 50%;
+  background: rgba(189, 138, 75, 0.12);
+  color: #a66f32;
+}
+
+.menu-plain-title {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 0.7rem;
+}
+
+.menu-plain-title h3 {
+  margin: 0;
+  color: var(--title-on-light, #3b291f);
+  font-size: 1rem;
+  font-weight: 700;
+  line-height: 1.35;
+}
+
+.menu-plain-body p {
+  margin: 0.3rem 0 0;
+  color: var(--text-on-light, #695648);
+  font-size: 0.87rem;
+  line-height: 1.75;
 }

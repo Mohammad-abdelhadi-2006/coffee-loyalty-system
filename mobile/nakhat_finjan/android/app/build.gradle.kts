@@ -1,3 +1,19 @@
+import java.util.Properties
+
+// Release signing credentials. Deliberately outside the repository — the file
+// and any .jks beside it are gitignored, because a signing key in version
+// control is a signing key anyone can publish updates with.
+//
+// Create it once (see android/SIGNING.md) and every `flutter build apk
+// --release` from then on is signed with the real key, with nothing further to
+// change here.
+val keystoreProperties = Properties().apply {
+    val file = rootProject.file("key.properties")
+    if (file.exists()) file.inputStream().use { load(it) }
+}
+
+val hasReleaseKeystore = keystoreProperties.getProperty("storeFile") != null
+
 plugins {
     id("com.android.application")
     id("kotlin-android")
@@ -34,11 +50,40 @@ android {
         versionName = flutter.versionName
     }
 
+    signingConfigs {
+        if (hasReleaseKeystore) {
+            create("release") {
+                keyAlias = keystoreProperties.getProperty("keyAlias")
+                keyPassword = keystoreProperties.getProperty("keyPassword")
+                storeFile = file(keystoreProperties.getProperty("storeFile"))
+                storePassword = keystoreProperties.getProperty("storePassword")
+            }
+        }
+    }
+
     buildTypes {
         release {
-            // TODO: Add your own signing config for the release build.
-            // Signing with the debug keys for now, so `flutter run --release` works.
-            signingConfig = signingConfigs.getByName("debug")
+            if (hasReleaseKeystore) {
+                signingConfig = signingConfigs.getByName("release")
+            } else {
+                // No key.properties present. Still builds, so `flutter run
+                // --release` keeps working on a dev machine — but this APK must
+                // never be published: the debug key is per-machine, so anyone
+                // who installs it can never be sent an update, and Firebase
+                // phone-auth only works for a fingerprint registered by hand.
+                //
+                // The warning is deliberately loud. A build that quietly signs
+                // with the debug key and looks finished is how a debug-signed
+                // APK ends up on a download page.
+                logger.warn("")
+                logger.warn("*********************************************************")
+                logger.warn("  WARNING: release APK is being signed with the DEBUG key.")
+                logger.warn("  android/key.properties is missing - see android/SIGNING.md")
+                logger.warn("  DO NOT PUBLISH THIS BUILD.")
+                logger.warn("*********************************************************")
+                logger.warn("")
+                signingConfig = signingConfigs.getByName("debug")
+            }
         }
     }
 }

@@ -4,6 +4,7 @@ using CoffeeLoyalty.Api.Data;
 using CoffeeLoyalty.Api.Extensions;
 using CoffeeLoyalty.Api.Middleware;
 using Microsoft.AspNetCore.HttpOverrides;
+using Microsoft.AspNetCore.StaticFiles;
 using Microsoft.EntityFrameworkCore;
 using Scalar.AspNetCore;
 
@@ -86,30 +87,39 @@ app.MapControllers();
 // Serving it here is what makes the dashboard's `BASE = '/api'` work untouched: the page and
 // the API share an origin, so nothing is cross-origin and the CORS policy never comes into it.
 // `/api` is absolute from the root, so moving the pages under /dashboard does not affect it.
-var dashboardIndex = Path.Combine(
-    app.Environment.WebRootPath ?? string.Empty,
-    "dashboard",
-    "index.html");
+var webRoot = app.Environment.WebRootPath ?? string.Empty;
 
-if (File.Exists(dashboardIndex))
+// The dashboard's own entry point, under its prefix.
+var dashboardIndex = Path.Combine(webRoot, "dashboard", "index.html");
+
+// The public site's entry point, at the root.
+var siteIndex = Path.Combine(webRoot, "index.html");
+
+var hasDashboard = File.Exists(dashboardIndex);
+var hasSite = File.Exists(siteIndex);
+
+if (hasDashboard || hasSite)
 {
-    // Static files only — no UseDefaultFiles. That middleware would answer "/" with
-    // wwwroot/index.html, and the site root is deliberately empty until the public site
-    // exists. Asset URLs mirror the folder layout (/dashboard/assets/… ->
-    // wwwroot/dashboard/assets/…), so nothing here needs a rewrite.
-    app.UseStaticFiles();
+    // .apk is not in the default content-type table, and StaticFileMiddleware
+    // refuses to serve a type it does not know — the download link would answer
+    // 404 with no hint why. This is the one extension the site adds.
+    var contentTypes = new FileExtensionContentTypeProvider();
+    contentTypes.Mappings[".apk"] = "application/vnd.android.package-archive";
+
+    // Static files only — no UseDefaultFiles. "/" is answered by the fallback
+    // below instead, which keeps every not-a-real-file decision in one place.
+    app.UseStaticFiles(new StaticFileOptions { ContentTypeProvider = contentTypes });
 
     // Three cases, in this order:
     //
     // 1. /api — a mistyped endpoint must stay a 404. Falling through to the HTML below would
     //    answer fetch() with 200 and a page of markup, and the dashboard's client parses the
     //    body as JSON, so the real error would surface as an unintelligible parse failure.
-    // 2. /dashboard — anything under the prefix that is not a real file gets index.html. Today
-    //    the app navigates by React state and lives entirely on /dashboard, so this mostly
-    //    catches the bare prefix with no trailing slash; it is also what would keep a future
-    //    client-side route working after a refresh.
-    // 3. Everything else, "/" included — an explicit 404. The root is reserved for the public
-    //    site and is not the dashboard's.
+    // 2. /dashboard — anything under the prefix that is not a real file gets the dashboard's
+    //    index.html, which is what keeps a client-side route working after a refresh.
+    // 3. Everything else, "/" included — the public site's index.html. The site routes with
+    //    BrowserRouter, so /menu and /contact are its routes and not files on disk; without
+    //    this they would 404 on a refresh or on a link someone pasted.
     app.MapFallback(async context =>
     {
         if (context.Request.Path.StartsWithSegments("/api"))
@@ -118,22 +128,45 @@ if (File.Exists(dashboardIndex))
             return;
         }
 
-        if (!context.Request.Path.StartsWithSegments("/dashboard"))
+        var isDashboard = context.Request.Path.StartsWithSegments("/dashboard");
+        var page = isDashboard ? dashboardIndex : siteIndex;
+
+        // Whichever of the two was not built simply is not served, rather than
+        // the request falling through to the other one and showing the wrong app.
+        if (!File.Exists(page))
         {
             context.Response.StatusCode = StatusCodes.Status404NotFound;
             return;
         }
 
         context.Response.ContentType = "text/html; charset=utf-8";
-        await context.Response.SendFileAsync(dashboardIndex);
+        await context.Response.SendFileAsync(page);
     });
 
-    app.Logger.LogInformation("Dashboard is being served at /dashboard from {Path}.", dashboardIndex);
+    if (hasSite)
+    {
+        app.Logger.LogInformation("Public site is being served at / from {Path}.", siteIndex);
+    }
+    else
+    {
+        app.Logger.LogWarning(
+            "No public site in wwwroot; / will 404. Run 'npm run build' in website/ to include it.");
+    }
+
+    if (hasDashboard)
+    {
+        app.Logger.LogInformation("Dashboard is being served at /dashboard from {Path}.", dashboardIndex);
+    }
+    else
+    {
+        app.Logger.LogWarning(
+            "No dashboard build in wwwroot/dashboard; /dashboard will 404. Run 'npm run build' in dashboard/.");
+    }
 }
 else
 {
     app.Logger.LogInformation(
-        "No dashboard build in wwwroot/dashboard; serving the API only. Run 'npm run build' in dashboard/ to include it.");
+        "Nothing in wwwroot; serving the API only. Run 'npm run build' in website/ and dashboard/ to include them.");
 }
 
 // Startup work: verify the Firebase credentials and bootstrap the admin account before the

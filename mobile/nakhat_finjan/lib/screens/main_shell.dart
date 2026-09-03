@@ -3,6 +3,7 @@ import 'package:provider/provider.dart';
 
 import '../providers/customer_provider.dart';
 import '../widgets/app_bottom_nav.dart';
+import '../widgets/entrance.dart';
 import 'home_screen.dart';
 import 'menu_screen.dart';
 import 'purchases_screen.dart';
@@ -47,14 +48,24 @@ class _MainShellState extends State<MainShell> {
 
   @override
   Widget build(BuildContext context) {
+    // The bodies are wrapped, not reordered: an IndexedStack builds all four the
+    // moment the shell mounts, so without a signal every tab's entrance would
+    // run at once against tabs nobody is looking at, and be long finished by the
+    // time they were opened. Each body is told whether it is the one on screen,
+    // and holds its entrance until it is.
+    const bodies = [
+      HomeScreen(),
+      MenuScreen(),
+      PurchasesScreen(),
+      SettingsScreen(),
+    ];
+
     return Scaffold(
       body: IndexedStack(
         index: _current.index,
-        children: const [
-          HomeScreen(),
-          MenuScreen(),
-          PurchasesScreen(),
-          SettingsScreen(),
+        children: [
+          for (var i = 0; i < bodies.length; i++)
+            TabVisibility(isActive: i == _current.index, child: bodies[i]),
         ],
       ),
       bottomNavigationBar: AppBottomNav(

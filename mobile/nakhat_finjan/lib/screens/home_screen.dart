@@ -7,6 +7,7 @@ import '../theme/app_colors.dart';
 import '../theme/app_text.dart';
 import '../theme/app_theme.dart';
 import '../utils/arabic_format.dart';
+import '../widgets/entrance.dart';
 import '../widgets/shimmer_box.dart';
 import '../widgets/surfaces.dart';
 
@@ -114,63 +115,90 @@ class HomeScreen extends StatelessWidget {
 
     return SafeArea(
       bottom: false,
-      child: RefreshIndicator(
-        color: AppColors.caramel,
-        backgroundColor: AppColors.surface,
-        // Balance and ledger together, which is what the design note requires —
-        // `refreshHome` fetches both and lands them as one state change.
-        onRefresh: () => context.read<CustomerProvider>().refreshHome(),
-        child: ListView(
-          // Always scrollable: pull-to-refresh needs somewhere to pull from,
-          // and the error and empty bodies are shorter than the viewport.
-          physics: const AlwaysScrollableScrollPhysics(),
-          padding: const EdgeInsets.fromLTRB(
-            AppMetrics.screenPadding,
-            12,
-            AppMetrics.screenPadding,
-            24,
+      // Gated on the data, not on the frame: while the skeleton is up `ready` is
+      // false and nothing animates, so the entrance belongs to the real balance
+      // and ledger rather than playing against shimmer bars and then having to
+      // play a second time when the numbers land.
+      child: EntranceGroup(
+        ready: state != HomeState.loading,
+        child: RefreshIndicator(
+          color: AppColors.caramel,
+          backgroundColor: AppColors.surface,
+          // Balance and ledger together, which is what the design note requires —
+          // `refreshHome` fetches both and lands them as one state change.
+          onRefresh: () => context.read<CustomerProvider>().refreshHome(),
+          child: ListView(
+            // Always scrollable: pull-to-refresh needs somewhere to pull from,
+            // and the error and empty bodies are shorter than the viewport.
+            physics: const AlwaysScrollableScrollPhysics(),
+            padding: const EdgeInsets.fromLTRB(
+              AppMetrics.screenPadding,
+              12,
+              AppMetrics.screenPadding,
+              24,
+            ),
+            children: switch (state) {
+              HomeState.loading => const [_LoadingBody()],
+              HomeState.error => [
+                _Greeting(name: name),
+                const SizedBox(height: 16),
+                EntranceItem(
+                  index: 1,
+                  child: ErrorState(
+                    message:
+                        customers.homeError ??
+                        'صار خطأ، ما قدرنا نحمّل بياناتك',
+                    onRetry: () =>
+                        context.read<CustomerProvider>().refreshHome(),
+                  ),
+                ),
+              ],
+              HomeState.empty => [
+                _Greeting(name: name),
+                const SizedBox(height: 16),
+                EntranceItem(
+                  index: 1,
+                  child: _BalanceCard(
+                    balance: formatGroupedNumber(customers.pointsBalance),
+                  ),
+                ),
+                const SizedBox(height: 28),
+                const _LedgerHeading(),
+                const SizedBox(height: 12),
+                const EntranceItem(
+                  index: 3,
+                  child: EmptyState(
+                    icon: Icons.local_cafe_outlined,
+                    message: 'لسا ما في حركات',
+                  ),
+                ),
+              ],
+              HomeState.loaded => [
+                _Greeting(name: name),
+                const SizedBox(height: 16),
+                EntranceItem(
+                  index: 1,
+                  child: _BalanceCard(
+                    balance: formatGroupedNumber(customers.pointsBalance),
+                  ),
+                ),
+                const SizedBox(height: 28),
+                const _LedgerHeading(),
+                const SizedBox(height: 12),
+                // The ledger continues the run rather than restarting it, so the
+                // rows follow the heading instead of arriving alongside it.
+                HairlineList(
+                  children: [
+                    for (final (i, entry) in entries.indexed)
+                      EntranceItem(
+                        index: 3 + i,
+                        child: _LedgerRow(entry: entry),
+                      ),
+                  ],
+                ),
+              ],
+            },
           ),
-          children: switch (state) {
-            HomeState.loading => const [_LoadingBody()],
-            HomeState.error => [
-              _Greeting(name: name),
-              const SizedBox(height: 16),
-              ErrorState(
-                message:
-                    customers.homeError ?? 'صار خطأ، ما قدرنا نحمّل بياناتك',
-                onRetry: () => context.read<CustomerProvider>().refreshHome(),
-              ),
-            ],
-            HomeState.empty => [
-              _Greeting(name: name),
-              const SizedBox(height: 16),
-              _BalanceCard(
-                balance: formatGroupedNumber(customers.pointsBalance),
-              ),
-              const SizedBox(height: 28),
-              const _LedgerHeading(),
-              const SizedBox(height: 12),
-              const EmptyState(
-                icon: Icons.local_cafe_outlined,
-                message: 'لسا ما في حركات',
-              ),
-            ],
-            HomeState.loaded => [
-              _Greeting(name: name),
-              const SizedBox(height: 16),
-              _BalanceCard(
-                balance: formatGroupedNumber(customers.pointsBalance),
-              ),
-              const SizedBox(height: 28),
-              const _LedgerHeading(),
-              const SizedBox(height: 12),
-              HairlineList(
-                children: [
-                  for (final entry in entries) _LedgerRow(entry: entry),
-                ],
-              ),
-            ],
-          },
         ),
       ),
     );
@@ -188,7 +216,11 @@ class _Greeting extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final greeting = name == null || name!.isEmpty ? 'مرحباً' : 'مرحباً، $name';
-    return Text(greeting, style: AppText.greeting);
+
+    // Short, so it may arrive a word at a time — «مرحباً، محمد» is two tokens
+    // and is fully up almost immediately. It carries its own place in the run,
+    // which is why nothing wraps it in an EntranceItem.
+    return WordReveal(greeting, style: AppText.greeting, startIndex: 0);
   }
 }
 
@@ -199,7 +231,11 @@ class _LedgerHeading extends StatelessWidget {
   Widget build(BuildContext context) {
     return const Padding(
       padding: EdgeInsets.symmetric(horizontal: 4),
-      child: Text('حركات النقاط', style: AppText.sectionTitle),
+      child: WordReveal(
+        'حركات النقاط',
+        style: AppText.sectionTitle,
+        startIndex: 2,
+      ),
     );
   }
 }

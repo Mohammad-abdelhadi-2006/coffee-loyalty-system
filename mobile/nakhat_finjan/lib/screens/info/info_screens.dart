@@ -6,6 +6,7 @@ import '../../theme/app_colors.dart';
 import '../../theme/app_text.dart';
 import '../../theme/app_theme.dart';
 import '../../widgets/app_buttons.dart';
+import '../../widgets/entrance.dart';
 import '../../widgets/surfaces.dart';
 
 /// «كيف تكسب نقاط؟» — the shop's loyalty rules, in the customer's words.
@@ -56,9 +57,7 @@ class HowToEarnPointsScreen extends StatelessWidget {
               '٣',
               'اكتب اسمك — أول مرة بس، عشان نرحّب فيك ونربط نقاطك بحسابك.',
             ),
-            _Body(
-              'بعد هيك حسابك جاهز، ونقاطك بتبدأ تتجمّع من أول عملية شراء.',
-            ),
+            _Body('بعد هيك حسابك جاهز، ونقاطك بتبدأ تتجمّع من أول عملية شراء.'),
           ],
         ),
 
@@ -136,9 +135,7 @@ class HowToEarnPointsScreen extends StatelessWidget {
         _Section(
           title: 'نصائح تجمّع فيها نقاط أسرع',
           children: [
-            _Bullet(
-              'خلّي رقمك مسجّل قبل الدفع عشان الكاشير يربط العملية فيك.',
-            ),
+            _Bullet('خلّي رقمك مسجّل قبل الدفع عشان الكاشير يربط العملية فيك.'),
             _Bullet('راجع "مشترياتي" بعد كل زيارة وتأكد إنه نقاطك انضافت.'),
           ],
         ),
@@ -323,50 +320,67 @@ class _InfoScaffold extends StatelessWidget {
   Widget build(BuildContext context) {
     return Scaffold(
       body: SafeArea(
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.stretch,
-          children: [
-            Padding(
-              padding: const EdgeInsets.symmetric(
-                horizontal: AppMetrics.screenPadding,
-              ),
-              child: Align(
-                alignment: AlignmentDirectional.centerStart,
-                child: IconButton(
-                  onPressed: () => Navigator.of(context).maybePop(),
-                  icon: const Icon(
-                    Icons.arrow_forward,
-                    size: 24,
-                    color: AppColors.ink,
+        // A pushed route, so there is no TabVisibility above it and the run
+        // starts on mount — which is exactly when the screen appears.
+        child: EntranceGroup(
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.stretch,
+            children: [
+              Padding(
+                padding: const EdgeInsets.symmetric(
+                  horizontal: AppMetrics.screenPadding,
+                ),
+                child: Align(
+                  alignment: AlignmentDirectional.centerStart,
+                  child: EntranceItem(
+                    index: 0,
+                    rise: 0.3,
+                    child: IconButton(
+                      onPressed: () => Navigator.of(context).maybePop(),
+                      icon: const Icon(
+                        Icons.arrow_forward,
+                        size: 24,
+                        color: AppColors.ink,
+                      ),
+                      tooltip: 'رجوع',
+                      padding: EdgeInsets.zero,
+                      constraints: const BoxConstraints(
+                        minWidth: 48,
+                        minHeight: 48,
+                      ),
+                    ),
                   ),
-                  tooltip: 'رجوع',
-                  padding: EdgeInsets.zero,
-                  constraints: const BoxConstraints(
-                    minWidth: 48,
-                    minHeight: 48,
+                ),
+              ),
+              Expanded(
+                child: SingleChildScrollView(
+                  padding: const EdgeInsets.fromLTRB(
+                    AppMetrics.screenPadding,
+                    12,
+                    AppMetrics.screenPadding,
+                    32,
+                  ),
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.stretch,
+                    children: [
+                      WordReveal(
+                        title,
+                        style: AppText.screenTitle,
+                        startIndex: 1,
+                      ),
+                      const SizedBox(height: 16),
+                      // Each section enters as one block. The paragraphs inside
+                      // are long, and long Arabic revealed word by word is slow
+                      // to read and quickly irritating — only the short headings
+                      // above get that treatment.
+                      for (final (i, child) in children.indexed)
+                        EntranceItem(index: 2 + i, child: child),
+                    ],
                   ),
                 ),
               ),
-            ),
-            Expanded(
-              child: SingleChildScrollView(
-                padding: const EdgeInsets.fromLTRB(
-                  AppMetrics.screenPadding,
-                  12,
-                  AppMetrics.screenPadding,
-                  32,
-                ),
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.stretch,
-                  children: [
-                    Text(title, style: AppText.screenTitle),
-                    const SizedBox(height: 16),
-                    ...children,
-                  ],
-                ),
-              ),
-            ),
-          ],
+            ],
+          ),
         ),
       ),
     );

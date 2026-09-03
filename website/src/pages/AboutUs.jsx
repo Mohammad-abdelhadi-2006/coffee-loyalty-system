@@ -1,5 +1,5 @@
 import { motion } from 'motion/react'
-import aboutUsPic from '../assets/images/aboutUsPic.png'
+import aboutUsPic from '../assets/images/shop/story.jpg'
 import { useLanguage } from '../context/LanguageContext.jsx'
 
 function AboutUs() {

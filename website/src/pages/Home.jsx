@@ -1,57 +1,92 @@
 import HeroBG from '../assets/videos/HeroBG.mp4'
-import WhyUsPic from '../assets/images/WhyUsPic.png'
-import turkishCoffeePic from '../assets/images/turkishCoffeePic.png'
-import mojitoPic from '../assets/images/mojitoPic.png'
-import iceMochaPic from '../assets/images/iceMochaPic.png'
-import milkshakeStrawberryPic from '../assets/images/milkshakeStrawberryPic.png'
-import galleryPic1 from '../assets/images/galleryPic1.png'
-import galleryPic2 from '../assets/images/galleryPic2.png'
-import galleryPic3 from '../assets/images/galleryPic3.png'
-import galleryPic4 from '../assets/images/galleryPic4.png'
+import galleryPic1 from '../assets/images/shop/gallery-1.jpg'
+import galleryPic2 from '../assets/images/shop/gallery-2.jpg'
+import galleryPic3 from '../assets/images/shop/gallery-3.jpg'
+import galleryPic4 from '../assets/images/shop/gallery-4.jpg'
 
-import { Link } from 'react-router-dom'
-import { motion } from 'motion/react'
-import {
-  LuFlame,
-  LuHouse,
-  LuClock,
-  LuCoffee,
-  LuDroplets,
-  LuSparkles,
-} from 'react-icons/lu'
+import { useEffect, useState } from 'react'
+import { Link, useLocation } from 'react-router-dom'
+import { motion, useReducedMotion } from 'motion/react'
+import { LuCoffee } from 'react-icons/lu'
+import { getBeanImage } from '../constants/beanImages.js'
+import { BEST_SELLERS } from '../constants/bestSellers.js'
+import { getMenuImage } from '../constants/menuImages.js'
 import { useLanguage } from '../context/LanguageContext.jsx'
+import GetApp from '../components/GetApp.jsx'
+import { GET_APP_ID, scrollToGetApp } from '../components/getAppAnchor.js'
 
-const bestSellerImages = [
-  {
-    id: 1,
-    img: turkishCoffeePic,
-  },
-  {
-    id: 2,
-    img: iceMochaPic,
-  },
-  {
-    id: 3,
-    img: mojitoPic,
-  },
-  {
-    id: 4,
-    img: milkshakeStrawberryPic,
-  },
-]
+function BeanPhoto({ src, alt }) {
+  const [loaded, setLoaded] = useState(false)
 
-const qualityIcons = [LuClock, LuHouse, LuFlame]
-const craftedIcons = [LuCoffee, LuDroplets, LuSparkles]
+  return (
+    <div className="bean-card-media">
+      {src ? (
+        <img
+          src={src}
+          alt={alt}
+          loading="lazy"
+          className={loaded ? 'is-loaded' : undefined}
+          onLoad={() => setLoaded(true)}
+        />
+      ) : (
+        <span className="bean-card-mark" aria-hidden="true">
+          <LuCoffee />
+        </span>
+      )}
+    </div>
+  )
+}
 
 function Home() {
   const { translations } = useLanguage()
+  const location = useLocation()
 
-  const bestSellers = bestSellerImages.map((item, index) => ({
-    ...item,
-    name: translations.home.bestSellers[index][0],
-    tag: translations.home.bestSellers[index][1],
-    about: translations.home.bestSellers[index][2],
-  }))
+  // `whileInView` does not consult the platform preference on its own, so the
+  // entrance props are dropped entirely when reduced motion is asked for — the
+  // section is simply there, at rest, on the first frame.
+  const reduceMotion = useReducedMotion()
+
+  // The same distance, duration and easing the rest of the page uses, so this
+  // section arrives feeling like part of it rather than its own effect. The
+  // margin starts the run just before the element clears the fold, which is
+  // what stops it being noticed as an animation at all.
+  const rise = (delay = 0) =>
+    reduceMotion
+      ? {}
+      : {
+          initial: { opacity: 0, y: 30 },
+          whileInView: { opacity: 1, y: 0 },
+          viewport: { once: true, amount: 0.15, margin: '0px 0px -10% 0px' },
+          transition: { duration: 0.55, delay, ease: 'easeOut' },
+        }
+
+  // Arriving from another page's app link, which navigates to /#get-app. The
+  // section is below the fold and its images may still be settling, so this
+  // waits for the next frame rather than scrolling against a moving layout.
+  useEffect(() => {
+    if (location.hash !== `#${GET_APP_ID}`) return
+
+    const frame = requestAnimationFrame(scrollToGetApp)
+
+    return () => cancelAnimationFrame(frame)
+  }, [location])
+
+  // Read straight out of the menu rather than kept as a second copy: the name,
+  // the price, the description and the photo are all the ones the menu page
+  // shows, so a change there cannot leave this section quietly wrong.
+  const bestSellers = BEST_SELLERS.map(({ category, item, tag }) => {
+    const [name, price, about] =
+      translations.menu.categories[category]?.items[item] ?? []
+
+    return {
+      id: `${category}-${item}`,
+      name,
+      price,
+      about,
+      tag: translations.home.bestSellerTags[tag] ?? '',
+      img: getMenuImage(category, item),
+    }
+  }).filter((entry) => entry.name)
 
   return (
     <main className="home-page">
@@ -90,102 +125,38 @@ function Home() {
         <div className="hero-corner-decoration" />
       </section>
 
-      {/* Quality */}
-      <section className="quality-section">
-        {translations.home.quality.map(([title, description], index) => {
-          const Icon = qualityIcons[index]
+      {/* Beans */}
+      <section className="beans-section">
+        {/* The heading arrives with the cards rather than sitting there while
+            they fade in under it — the section reads as one movement, the way
+            the rest of the page does. */}
+        <motion.div className="section-heading" {...rise(0)}>
+          <span className="section-eyebrow">{translations.home.beansEyebrow}</span>
 
-          return (
-            <motion.article
-              className="quality-card"
-              key={title}
-              initial={{ opacity: 0, y: 40 }}
-              whileInView={{ opacity: 1, y: 0 }}
-              viewport={{ once: true, amount: 0.2 }}
-              transition={{
-                duration: 0.5,
-                delay: index * 0.12,
-              }}
+          <h2>{translations.home.beansTitle}</h2>
+
+          <p>{translations.home.beansIntro}</p>
+        </motion.div>
+
+        <ul className="beans-grid">
+          {translations.home.beans.map(([name, description], index) => (
+            <motion.li
+              className="bean-card"
+              key={name}
+              {...rise(0.12 + index * 0.09)}
             >
-              <span className="home-card-icon">
-                <Icon />
-              </span>
+              <BeanPhoto src={getBeanImage(index)} alt={name} />
 
-              <h3>{title}</h3>
-              <p>{description}</p>
-            </motion.article>
-          )
-        })}
-      </section>
+              <div className="bean-card-body">
+                <h3>{name}</h3>
 
-      {/* Crafted coffee */}
-      <section className="crafted-section">
-        <div className="section-heading">
-          <span className="section-eyebrow">OUR PROMISE</span>
-
-          <h2>{translations.home.craftedTitle}</h2>
-
-          <p>{translations.home.craftedDescription}</p>
-        </div>
-
-        <div className="crafted-cards">
-          {translations.home.crafted.map(([title, description], index) => {
-            const Icon = craftedIcons[index]
-
-            return (
-              <motion.article
-                className="crafted-card"
-                key={title}
-                initial={{ opacity: 0, y: 35 }}
-                whileInView={{ opacity: 1, y: 0 }}
-                viewport={{ once: true, amount: 0.2 }}
-                transition={{
-                  duration: 0.5,
-                  delay: index * 0.12,
-                }}
-              >
-                <span className="home-card-icon">
-                  <Icon />
-                </span>
-
-                <h3>{title}</h3>
-                <p>{description}</p>
-              </motion.article>
-            )
-          })}
-        </div>
-      </section>
-
-      {/* Why us */}
-      <section className="why-section">
-        <motion.div
-          className="why-image-wrapper"
-          initial={{ opacity: 0, x: -40 }}
-          whileInView={{ opacity: 1, x: 0 }}
-          viewport={{ once: true, amount: 0.2 }}
-          transition={{ duration: 0.6 }}
-        >
-          <img src={WhyUsPic} alt={translations.home.whyTitle} />
-        </motion.div>
-
-        <motion.div
-          className="why-content"
-          initial={{ opacity: 0, x: 40 }}
-          whileInView={{ opacity: 1, x: 0 }}
-          viewport={{ once: true, amount: 0.2 }}
-          transition={{ duration: 0.6, delay: 0.1 }}
-        >
-          <span className="section-eyebrow">WHY CHOOSE US</span>
-
-          <h2>{translations.home.whyTitle}</h2>
-
-          <p>{translations.home.whyDescription}</p>
-
-          <Link to="/menu" className="home-btn home-btn-dark">
-            {translations.home.menuButton}
-            <span>→</span>
-          </Link>
-        </motion.div>
+                {/* Renders only when a description exists, so an empty string
+                    leaves a clean name-and-photo card and needs no JSX change. */}
+                {description && <p>{description}</p>}
+              </div>
+            </motion.li>
+          ))}
+        </ul>
       </section>
 
       {/* Best sellers */}
@@ -210,13 +181,16 @@ function Home() {
               }}
             >
               <div className="best-seller-image">
-                <img src={item.img} alt={item.name} />
+                {item.img && <img src={item.img} alt={item.name} />}
               </div>
 
               <div className="best-seller-info">
                 <div className="best-seller-title">
                   <h3>{item.name}</h3>
-                  <span>{item.price}</span>
+                  {/* Now a real price, read from the menu. This slot existed
+                      before and rendered nothing, because the old hard-coded
+                      list had no price field at all. */}
+                  {item.price && <span>{item.price}</span>}
                 </div>
 
                 {item.tag && (
@@ -247,6 +221,10 @@ function Home() {
           <img src={galleryPic4} alt="" />
         </div>
       </section>
+
+      {/* Get the app — last on the page, directly above the footer, which is
+          where docs/Website_Info.md places it. */}
+      <GetApp />
     </main>
   )
 }

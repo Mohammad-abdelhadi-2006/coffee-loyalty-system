@@ -460,3 +460,16 @@ secrets/
 
 
 docs/design/
+
+# ── Project-specific ────────────────────────────────────────────────────────
+
+# Source photography from the shop (~95 MB of 3375x4219 PNGs). The web-ready
+# derivatives under website/src/assets/images/ ARE tracked; these originals are
+# kept locally and shared out of band. Git never forgets a large blob, so they
+# stay out of history.
+docs/Pic/
+
+# The signed Android build (~48 MB). Distributed through GitHub Releases, which
+# is what release binaries are for — not committed.
+website/public/downloads/*.apk
+backend/CoffeeLoyalty.Api/wwwroot/
